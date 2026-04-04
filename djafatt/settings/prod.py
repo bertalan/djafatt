@@ -34,6 +34,9 @@ STORAGES = {
     },
 }
 
+# Only serve Vite dist (skip src/ with unresolved Tailwind imports)
+STATICFILES_DIRS = [BASE_DIR / "static" / "dist"]  # noqa: F405
+
 # Vite production mode
 DJANGO_VITE = {
     "default": {
