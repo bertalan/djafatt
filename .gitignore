@@ -60,3 +60,4 @@ coverage.xml
 #other
 .github/
 .pytest_cache/
+deploy.sh

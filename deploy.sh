@@ -21,8 +21,12 @@ VENV="$APP_DIR/venv"
 
 # Clone or pull
 if [ ! -d "$APP_DIR/.git" ]; then
-    echo "  Cloning repo..."
-    git clone https://github.com/bertalan/djafatt.git "$APP_DIR"
+    echo "  Initializing repo..."
+    cd "$APP_DIR"
+    git init
+    git remote add origin https://github.com/bertalan/djafatt.git
+    git fetch origin
+    git checkout -f main
 else
     echo "  Pulling latest..."
     cd "$APP_DIR"
