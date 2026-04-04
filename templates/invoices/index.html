@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load djafatt_tags %}
+{% block title %}Fatture Vendita — djafatt{% endblock %}
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <h1 class="text-2xl font-bold">Fatture Vendita</h1>
+    {% if not is_read_only %}
+    <a href="{% url 'invoices-create' %}" class="btn btn-primary btn-sm mt-2 sm:mt-0">+ Nuova Fattura</a>
+    {% endif %}
+</div>
+<div class="mb-4">
+    <input type="search" name="q" placeholder="Cerca per numero o cliente…"
+           class="input input-bordered w-full sm:w-80"
+           hx-get="{% url 'invoices-index' %}"
+           hx-target="#invoice-table"
+           hx-trigger="input changed delay:300ms"
+           hx-push-url="true" />
+</div>
+<div id="invoice-table">
+    {% include "invoices/partials/_table.html" %}
+</div>
+{% endblock %}

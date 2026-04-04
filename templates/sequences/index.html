@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Sequenze — djafatt{% endblock %}
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <h1 class="text-2xl font-bold">Sequenze Numerazione</h1>
+    <a href="{% url 'sequences-create' %}" class="btn btn-primary btn-sm mt-2 sm:mt-0">+ Nuova Sequenza</a>
+</div>
+<div class="overflow-x-auto">
+    <table class="table table-zebra">
+        <thead>
+            <tr><th>Nome</th><th>Tipo</th><th>Pattern</th><th>Sistema</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for seq in sequences %}
+            <tr>
+                <td class="font-medium">{{ seq.name }}</td>
+                <td><span class="badge badge-sm">{{ seq.get_type_display }}</span></td>
+                <td class="text-sm font-mono">{{ seq.pattern }}</td>
+                <td>{% if seq.is_system %}<span class="badge badge-warning badge-sm">sistema</span>{% endif %}</td>
+                <td class="text-right">
+                    {% if not seq.is_system %}
+                    <a href="{% url 'sequences-edit' seq.pk %}" class="btn btn-ghost btn-xs">Modifica</a>
+                    <a href="{% url 'sequences-delete' seq.pk %}" class="btn btn-ghost btn-xs text-error">Elimina</a>
+                    {% else %}
+                    <span class="text-xs opacity-50">protetta</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center opacity-50">Nessuna sequenza.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

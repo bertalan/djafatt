@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Elimina aliquota IVA" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h2 class="card-title text-error">{% trans "Conferma eliminazione" %}</h2>
+      <p>{% blocktrans with name=object.name %}Sei sicuro di voler eliminare l'aliquota IVA <strong>{{ name }}</strong>?{% endblocktrans %}</p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="card-actions justify-end mt-4">
+          <a href="{% url 'vat-rates-index' %}" class="btn">{% trans "Annulla" %}</a>
+          <button type="submit" class="btn btn-error">{% trans "Elimina" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

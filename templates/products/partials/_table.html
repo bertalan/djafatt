@@ -1,0 +1,36 @@
+{% load djafatt_tags %}
+<div class="overflow-x-auto">
+    <table class="table table-zebra">
+        <thead>
+            <tr><th>Nome</th><th>Prezzo</th><th>Unità</th><th>Aliquota IVA</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for p in products %}
+            <tr>
+                <td class="font-medium">{{ p.name }}</td>
+                <td>{{ p.price|format_cents_eur }}</td>
+                <td>{{ p.unit|default:"—" }}</td>
+                <td>{{ p.vat_rate|default:"—" }}</td>
+                <td class="text-right">
+                    {% if not is_read_only %}
+                    <a href="{% url 'products-edit' p.pk %}" class="btn btn-ghost btn-xs">Modifica</a>
+                    <form method="post" action="{% url 'products-delete' p.pk %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-ghost btn-xs text-error" onclick="return confirm('Eliminare?')">Elimina</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center opacity-50">Nessun prodotto.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% if is_paginated %}
+<div class="flex justify-center mt-4 gap-2">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Prec</a>{% endif %}
+    <span class="btn btn-ghost btn-sm btn-disabled">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Succ →</a>{% endif %}
+</div>
+{% endif %}

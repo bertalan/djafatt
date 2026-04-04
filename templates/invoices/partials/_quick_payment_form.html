@@ -1,0 +1,31 @@
+{# Inline quick payment form — shown via HTMX below the invoice row #}
+<tr id="payment-form-{{ inv.pk }}" class="bg-base-200">
+    <td colspan="8">
+        <form method="post" action="{% url 'reports-record-payment' inv.pk %}" class="flex flex-wrap items-end gap-3 p-2">
+            {% csrf_token %}
+            <div class="form-control">
+                <label class="label label-text text-xs">Importo €</label>
+                <input name="amount" type="number" step="0.01" min="0.01"
+                       value="{{ remaining_display }}"
+                       class="input input-bordered input-sm w-32" required />
+            </div>
+            <div class="form-control">
+                <label class="label label-text text-xs">Data</label>
+                <input name="payment_date" type="date" value="{{ today }}"
+                       class="input input-bordered input-sm w-36" required />
+            </div>
+            <div class="form-control">
+                <label class="label label-text text-xs">Metodo</label>
+                <select name="payment_method" class="select select-bordered select-sm w-40">
+                    <option value="">—</option>
+                    {% for code, label in payment_choices.items %}
+                    <option value="{{ code }}" {% if code == inv.payment_method %}selected{% endif %}>{{ code }} — {{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success btn-sm">Registra incasso</button>
+            <button type="button" class="btn btn-ghost btn-sm"
+                    onclick="this.closest('tr').remove()">Annulla</button>
+        </form>
+    </td>
+</tr>

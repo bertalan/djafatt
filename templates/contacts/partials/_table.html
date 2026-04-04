@@ -1,0 +1,46 @@
+<div class="overflow-x-auto">
+    <table class="table table-zebra">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>P.IVA</th>
+                <th>Città</th>
+                <th>Tipo</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contact in contacts %}
+            <tr>
+                <td class="font-medium">{{ contact.name }}</td>
+                <td class="text-sm opacity-70">{{ contact.vat_number }}</td>
+                <td class="text-sm">{{ contact.city }}</td>
+                <td>
+                    {% if contact.is_customer %}<span class="badge badge-primary badge-sm">cliente</span>{% endif %}
+                    {% if contact.is_supplier %}<span class="badge badge-secondary badge-sm">fornitore</span>{% endif %}
+                </td>
+                <td class="text-right">
+                    <a href="{% url 'contacts-edit' contact.pk %}" class="btn btn-ghost btn-xs">Modifica</a>
+                    {% if not is_read_only %}
+                    <a href="{% url 'contacts-delete' contact.pk %}" class="btn btn-ghost btn-xs text-error">Elimina</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center opacity-50">Nessun contatto trovato.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if is_paginated %}
+<div class="flex justify-center mt-4 gap-2">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q|default:'' }}" class="btn btn-sm">«</a>
+    {% endif %}
+    <span class="btn btn-sm btn-disabled">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q|default:'' }}" class="btn btn-sm">»</a>
+    {% endif %}
+</div>
+{% endif %}

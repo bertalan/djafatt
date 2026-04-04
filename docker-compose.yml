@@ -1,0 +1,44 @@
+name: djafatt
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: djafatt
+      POSTGRES_USER: djafatt
+      POSTGRES_PASSWORD: djafatt
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    user: root
+    volumes:
+      - .:/app
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    depends_on:
+      - db
+      - redis
+    env_file: .env
+
+  node:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: npx vite build --watch
+    # For HMR dev server (if needed): command: npx vite --host
+    # ports:
+    #   - "5173:5173"
+
+volumes:
+  pgdata:

@@ -1,0 +1,28 @@
+{% load djafatt_tags %}
+<div class="space-y-2 text-sm">
+    <div class="flex justify-between">
+        <span>Imponibile</span>
+        <span>{{ total_net|format_cents_eur }}</span>
+    </div>
+    <div class="flex justify-between">
+        <span>IVA</span>
+        <span>{{ total_vat|format_cents_eur }}</span>
+    </div>
+    {% if withholding_amount %}
+    <div class="flex justify-between text-error">
+        <span>Ritenuta</span>
+        <span>-{{ withholding_amount|format_cents_eur }}</span>
+    </div>
+    {% endif %}
+    {% if stamp_duty_applied %}
+    <div class="flex justify-between">
+        <span>Bollo</span>
+        <span>{{ stamp_duty_amount|format_cents_eur }}</span>
+    </div>
+    {% endif %}
+    <div class="divider my-1"></div>
+    <div class="flex justify-between font-bold text-lg">
+        <span>Totale</span>
+        <span>{{ total_gross|format_cents_eur }}</span>
+    </div>
+</div>

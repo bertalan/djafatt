@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Impostazioni — djafatt{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Impostazioni</h1>
+
+{# Tabs #}
+<div class="tabs tabs-bordered mb-6">
+    <a href="?tab=company" class="tab {% if active_tab == 'company' %}tab-active{% endif %}">Azienda</a>
+    <a href="?tab=invoicing" class="tab {% if active_tab == 'invoicing' %}tab-active{% endif %}">Fatturazione</a>
+</div>
+
+{% if active_tab == "company" %}
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="_tab" value="company">
+    {% if company_form.errors %}
+    <div class="alert alert-error mb-4">
+        <ul>{% for field, errors in company_form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <div class="card bg-base-200 p-6">
+        <h2 class="font-bold text-lg mb-4">Dati azienda</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="form-control sm:col-span-2 lg:col-span-3">
+                <label class="label"><span class="label-text">Ragione sociale</span></label>
+                {{ company_form.company_name }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Partita IVA</span></label>
+                {{ company_form.vat_number }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Codice Fiscale</span></label>
+                {{ company_form.tax_code }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Regime fiscale</span></label>
+                {{ company_form.fiscal_regime }}
+            </div>
+            <div class="form-control sm:col-span-2">
+                <label class="label"><span class="label-text">Indirizzo</span></label>
+                {{ company_form.address }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Città</span></label>
+                {{ company_form.city }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">CAP</span></label>
+                {{ company_form.postal_code }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Provincia</span></label>
+                {{ company_form.province }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Paese</span></label>
+                {{ company_form.country_code }}
+            </div>
+        </div>
+        <h3 class="font-bold mt-6 mb-3">Contatti</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="form-control">
+                <label class="label"><span class="label-text">PEC</span></label>
+                {{ company_form.pec }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Codice SDI</span></label>
+                {{ company_form.sdi_code }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Telefono</span></label>
+                {{ company_form.phone }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Email</span></label>
+                {{ company_form.email }}
+            </div>
+        </div>
+        <h3 class="font-bold mt-6 mb-3">Banca</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="form-control">
+                <label class="label"><span class="label-text">Banca</span></label>
+                {{ company_form.bank_name }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">IBAN</span></label>
+                {{ company_form.bank_iban }}
+            </div>
+        </div>
+        <div class="mt-6">
+            <button type="submit" class="btn btn-primary">Salva dati azienda</button>
+        </div>
+    </div>
+</form>
+{% endif %}
+
+{% if active_tab == "invoicing" %}
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="_tab" value="invoicing">
+    {% if invoicing_form.errors %}
+    <div class="alert alert-error mb-4">
+        <ul>{% for field, errors in invoicing_form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <div class="card bg-base-200 p-6">
+        <h2 class="font-bold text-lg mb-4">Parametri fatturazione</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="form-control">
+                <label class="label"><span class="label-text">Metodo pagamento default</span></label>
+                {{ invoicing_form.default_payment_method }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Condizioni pagamento default</span></label>
+                {{ invoicing_form.default_payment_terms }}
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">% Ritenuta d'acconto default</span></label>
+                {{ invoicing_form.default_withholding_tax_percent }}
+            </div>
+        </div>
+        <div class="mt-6">
+            <button type="submit" class="btn btn-primary">Salva impostazioni fatturazione</button>
+        </div>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

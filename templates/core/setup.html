@@ -1,0 +1,93 @@
+{% load django_vite %}
+<!DOCTYPE html>
+<html lang="it" data-theme="business">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup — djafatt</title>
+    {% vite_hmr_client %}
+    {% vite_asset "src/main.js" %}
+</head>
+<body class="min-h-screen bg-base-200 flex items-center justify-center p-4">
+    <div class="card w-full max-w-2xl bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title text-2xl mb-2">Setup iniziale</h2>
+            <p class="text-sm opacity-60 mb-6">Configura l'account amministratore e i dati aziendali.</p>
+
+            {% if form.errors %}
+            <div class="alert alert-error mb-4">
+                <ul>{% for field, errors in form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul>
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <!-- Account -->
+                <h3 class="font-semibold text-lg mb-3">Account Amministratore</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Email</span></label>
+                        {{ form.email }}
+                    </div>
+                    <div></div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Password</span></label>
+                        {{ form.password }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Conferma Password</span></label>
+                        {{ form.password_confirm }}
+                    </div>
+                </div>
+
+                <!-- Company -->
+                <h3 class="font-semibold text-lg mb-3">Dati Azienda</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="form-control md:col-span-2">
+                        <label class="label"><span class="label-text">Ragione Sociale</span></label>
+                        {{ form.company_name }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">P.IVA</span></label>
+                        {{ form.vat_number }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Codice Fiscale</span></label>
+                        {{ form.tax_code }}
+                    </div>
+                    <div class="form-control md:col-span-2">
+                        <label class="label"><span class="label-text">Indirizzo</span></label>
+                        {{ form.address }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Città</span></label>
+                        {{ form.city }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">CAP</span></label>
+                        {{ form.postal_code }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Provincia</span></label>
+                        {{ form.province }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Regime Fiscale</span></label>
+                        {{ form.fiscal_regime }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">PEC</span></label>
+                        {{ form.pec }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Codice SDI</span></label>
+                        {{ form.sdi_code }}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">Completa Setup</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

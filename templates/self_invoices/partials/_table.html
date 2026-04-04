@@ -1,0 +1,57 @@
+{% load djafatt_tags %}
+<div class="overflow-x-auto">
+    <table class="table table-zebra">
+        <thead>
+            <tr><th>#</th><th>Numero</th><th>Data</th><th>Fornitore</th><th>Tipo</th><th class="text-right">Totale</th><th>Stato</th><th>Incasso</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td class="opacity-50">{{ inv.id }}</td>
+                <td class="font-medium font-mono">{{ inv.number }}</td>
+                <td>{{ inv.date|date:"d/m/Y" }}</td>
+                <td>{{ inv.contact.name }}</td>
+                <td><span class="badge badge-sm">{{ inv.document_type|describe_doc_type }}</span></td>
+                <td class="text-right">{{ inv.total_gross|format_cents_eur }}</td>
+                <td><span class="badge badge-warning badge-sm">{{ inv.status|describe_status }}</span></td>
+                <td>
+                    {% if inv.payment_status == 'paid' %}<span class="badge badge-sm badge-success">{{ inv.paid_at|date:"d/m/Y" }}</span>
+                    {% elif inv.payment_status == 'partial' %}<span class="badge badge-sm badge-warning">Parziale</span>
+                    {% else %}<span class="badge badge-sm badge-ghost">&mdash;</span>{% endif %}
+                </td>
+                <td class="text-right">
+                    {% if inv.payment_status != 'paid' %}
+                    <button type="button"
+                            class="btn btn-ghost btn-xs text-success"
+                            title="Registra incasso"
+                            hx-get="{% url 'reports-payment-form' inv.pk %}"
+                            hx-target="closest tr"
+                            hx-swap="afterend">💰</button>
+                    {% else %}
+                    <form method="post" action="{% url 'reports-mark-unpaid' inv.pk %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-ghost btn-xs text-warning" title="Rimuovi incassi" onclick="return confirm('Rimuovere tutti gli incassi?')">↩️</button>
+                    </form>
+                    {% endif %}
+                    <a href="{% url 'self-invoices-edit' inv.pk %}" class="btn btn-ghost btn-xs">Modifica</a>
+                    {% if not is_read_only %}
+                    <form method="post" action="{% url 'self-invoices-delete' inv.pk %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-ghost btn-xs text-error" onclick="return confirm('Eliminare?')">Elimina</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center opacity-50">Nessuna autofattura.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% if is_paginated %}
+<div class="flex justify-center mt-4 gap-2">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Prec</a>{% endif %}
+    <span class="btn btn-ghost btn-sm btn-disabled">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Succ →</a>{% endif %}
+</div>
+{% endif %}

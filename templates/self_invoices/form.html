@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% load djafatt_tags %}
+{% block title %}{% if form.instance.pk %}Modifica{% else %}Nuova{% endif %} Autofattura — djafatt{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'self-invoices-index' %}" class="btn btn-ghost btn-sm">← Autofatture</a>
+</div>
+<h1 class="text-2xl font-bold mb-6">{% if form.instance.pk %}Modifica Autofattura {{ form.instance.number }}{% else %}Nuova Autofattura{% endif %}</h1>
+
+{% if is_locked %}
+<div class="alert alert-info mb-6">Autofattura bloccata da SDI — puoi gestire solo i pagamenti.</div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    {% if form.errors or formset.errors or dues_formset.errors %}
+    <div class="alert alert-error mb-4">
+        <ul>
+            {% for field, errors in form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}
+            {% for f in formset %}{% for field, errors in f.errors.items %}{% for e in errors %}<li>Riga: {{ e }}</li>{% endfor %}{% endfor %}{% endfor %}
+            {% for f in dues_formset %}{% for field, errors in f.errors.items %}{% for e in errors %}<li>Rata: {{ e }}</li>{% endfor %}{% endfor %}{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-col lg:flex-row gap-6">
+        <div class="flex-1">
+            {% if is_locked %}<fieldset disabled class="contents">{% endif %}
+            <div class="card bg-base-200 p-4 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% if form.instance.pk %}
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Numero</span></label>
+                        {{ form.number }}
+                    </div>
+                    {% endif %}
+                    {% if form.sequence.field.queryset.count > 1 %}
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Sequenza</span></label>
+                        {{ form.sequence }}
+                    </div>
+                    {% else %}
+                    <input type="hidden" name="sequence" value="{{ form.sequence.value }}">
+                    {% endif %}
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Data</span></label>
+                        {{ form.date }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Tipo Documento *</span></label>
+                        {{ form.document_type }}
+                    </div>
+                    <div class="form-control sm:col-span-2 lg:col-span-3">
+                        <label class="label"><span class="label-text">Fornitore</span></label>
+                        {{ form.contact }}
+                    </div>
+                </div>
+            </div>
+
+            {# Self-invoice specific: original invoice reference #}
+            <div class="card bg-base-200 p-4 mb-6">
+                <h2 class="font-bold text-lg mb-4">Fattura originale del fornitore</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Numero fattura originale</span></label>
+                        {{ form.related_invoice_number }}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Data fattura originale</span></label>
+                        {{ form.related_invoice_date }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-200 p-4 mb-6">
+                <h2 class="font-bold text-lg mb-4">Righe fattura</h2>
+                {{ formset.management_form }}
+                <div id="invoice-lines">
+                    {% for line_form in formset %}
+                    <div class="line-row border-b border-base-300 pb-4 mb-4">
+                        {% if line_form.instance.pk %}{{ line_form.id }}{% endif %}
+                        <div class="hidden">{{ line_form.DELETE }}</div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex-1">
+                                <label class="label label-text text-xs">Descrizione</label>
+                                {{ line_form.description }}
+                            </div>
+                            <button type="button" class="btn btn-ghost btn-xs text-error ml-2 mt-6" onclick="this.closest('.line-row').querySelector('[name$=-DELETE]').checked=true;this.closest('.line-row').classList.add('opacity-30');this.remove()" title="Elimina riga">🗑️ Elimina</button>
+                        </div>
+                        <div class="grid grid-cols-12 gap-2 items-end">
+                            <div class="col-span-2"><label class="label label-text text-xs">Qtà</label>{{ line_form.quantity }}</div>
+                            <div class="col-span-2"><label class="label label-text text-xs">UdM</label>{{ line_form.unit_of_measure }}</div>
+                            <div class="col-span-3"><label class="label label-text text-xs">Prezzo €</label>{{ line_form.unit_price_display }}</div>
+                            <div class="col-span-4"><label class="label label-text text-xs">Aliquota IVA</label>{{ line_form.vat_rate }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="btn-add-line"
+                        class="btn btn-ghost btn-sm mt-2"
+                        hx-post="{% url 'invoices-add-line' %}"
+                        hx-target="#invoice-lines"
+                        hx-swap="beforeend">
+                    + Aggiungi riga
+                </button>
+            </div>
+
+            <div class="card bg-base-200 p-4 mb-6">
+                <h2 class="font-bold text-lg mb-4">Pagamento e opzioni</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-control"><label class="label"><span class="label-text">Metodo pagamento</span></label>{{ form.payment_method }}</div>
+                    <div class="form-control"><label class="label"><span class="label-text">Condizioni</span></label>{{ form.payment_terms }}</div>
+                    <div class="form-control"><label class="label"><span class="label-text">Esigibilità IVA</span></label>{{ form.vat_payability }}</div>
+                </div>
+                <div class="form-control mt-4"><label class="label"><span class="label-text">Note</span></label>{{ form.notes }}</div>
+            </div>
+            {% if is_locked %}</fieldset>{% endif %}
+
+            {# Payment installments (rate) #}
+            <div class="card bg-base-200 p-4 mb-6">
+                <h2 class="font-bold text-lg mb-4">Rate di pagamento</h2>
+                {{ dues_formset.management_form }}
+                <div id="payment-dues">
+                    {% for due_form in dues_formset %}
+                    <div class="due-row grid grid-cols-12 gap-2 items-end border-b border-base-300 pb-3 mb-3" id="due-{{ forloop.counter0 }}">
+                        {% if due_form.instance.pk %}{{ due_form.id }}{% endif %}
+                        <div class="hidden">{{ due_form.DELETE }}</div>
+                        <div class="col-span-3">
+                            <label class="label label-text text-xs">Scadenza</label>
+                            {{ due_form.due_date }}
+                        </div>
+                        <div class="col-span-2">
+                            <label class="label label-text text-xs">Importo €</label>
+                            {{ due_form.amount_display }}
+                        </div>
+                        <div class="col-span-3">
+                            <label class="label label-text text-xs">Metodo pag.</label>
+                            {{ due_form.payment_method }}
+                        </div>
+                        <div class="col-span-1 flex items-center pt-5">
+                            <label class="cursor-pointer flex items-center gap-1">
+                                {{ due_form.paid }}
+                                <span class="text-xs">Pagata</span>
+                            </label>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="label label-text text-xs">Data pag.</label>
+                            {{ due_form.paid_at }}
+                        </div>
+                        <div class="col-span-1 flex items-center pt-5">
+                            <button type="button" class="btn btn-ghost btn-xs text-error" onclick="this.closest('.due-row').querySelector('[name$=-DELETE]').checked=true;this.closest('.due-row').classList.add('opacity-30');this.remove()" title="Elimina rata">🗑️</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="btn-add-due"
+                        class="btn btn-ghost btn-sm mt-2"
+                        hx-post="{% url 'invoices-add-due' %}"
+                        hx-target="#payment-dues"
+                        hx-swap="beforeend">
+                    + Aggiungi rata
+                </button>
+            </div>
+        </div>
+        {# Right: totals + actions #}
+        <div class="w-full lg:w-80">
+            <div class="card bg-base-200 p-4 lg:sticky lg:top-4">
+                <h2 class="font-bold text-lg mb-4">Totali</h2>
+                <div id="totals-sidebar">
+                    {% include "invoices/partials/_totals.html" %}
+                </div>
+                <div class="divider"></div>
+                <button type="submit" class="btn btn-primary w-full">Salva</button>
+                {% if form.instance.pk %}
+                <a href="{% url 'self-invoices-preview' form.instance.pk %}" target="_blank" class="btn btn-outline w-full mt-2">Anteprima PDF</a>
+                <button type="submit" formaction="{% url 'self-invoices-duplicate' form.instance.pk %}" class="btn btn-outline btn-secondary w-full mt-2" formnovalidate>Duplica Autofattura</button>
+                {% endif %}
+                <a href="{% url 'self-invoices-index' %}" class="btn btn-ghost w-full mt-2">Annulla</a>
+            </div>
+        </div>
+    </div>
+</form>
+<script>
+document.body.addEventListener('htmx:configRequest', function(e) {
+    var elt = e.detail.elt;
+    if (elt.id === 'btn-add-line') {
+        var t = document.querySelector('[name=lines-TOTAL_FORMS]');
+        var idx = t.value;
+        t.value = +idx + 1;
+        e.detail.parameters['next_index'] = idx;
+    }
+    if (elt.id === 'btn-add-due') {
+        var t = document.querySelector('[name=dues-TOTAL_FORMS]');
+        var idx = t.value;
+        t.value = +idx + 1;
+        var rows = document.querySelectorAll('#payment-dues .due-row');
+        var last = rows.length ? rows[rows.length - 1] : null;
+        e.detail.parameters['next_index'] = idx;
+        e.detail.parameters['last_due_date'] = last ? (last.querySelector('[name$=-due_date]') || {}).value || '' : '';
+        e.detail.parameters['last_amount'] = last ? (last.querySelector('[name$=-amount_display]') || {}).value || '' : '';
+        e.detail.parameters['last_method'] = last ? (last.querySelector('[name$=-payment_method]') || {}).value || '' : '';
+    }
+});
+</script>
+{% endblock %}

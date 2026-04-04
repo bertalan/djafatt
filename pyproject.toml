@@ -1,0 +1,98 @@
+[project]
+name = "djafatt"
+version = "0.1.0"
+description = "Italian e-invoicing management — FatturaPA compliant"
+requires-python = ">=3.12"
+
+dependencies = [
+    "django>=6.0,<6.1",
+    "django-htmx>=1.27",
+    "django-vite>=3.1",
+    "dj-database-url>=3.1",
+    "psycopg[binary]>=3.3",
+    "a38>=0.1.8",
+    "defusedxml>=0.7.1",
+    "django-constance[database]>=4.3",
+    "gunicorn>=25.0",
+    "httpx>=0.28",
+    "whitenoise>=6.12",
+    "weasyprint>=68",
+    "celery[redis]>=5.6",
+    "django-celery-results>=2.6",
+    "django-celery-beat>=2.7",
+    "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "pytest-django>=4.12",
+    "factory-boy>=3.3",
+    "pytest-cov>=5.0",
+    "respx>=0.22",
+    "django-debug-toolbar>=6.2",
+    "ruff>=0.15",
+    "mypy>=1.19",
+    "coverage>=7.13",
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["apps*", "djafatt*"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "djafatt.settings.test"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+filterwarnings = [
+    "ignore:No directory at.*staticfiles:UserWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "security: marks security tests",
+    "integration: marks integration tests",
+    "sandbox: marks tests that hit the real SDI sandbox API (deselect with '-m \"not sandbox\"')",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pyflakes + pycodestyle
+    "I",              # isort
+    "N",              # pep8-naming
+    "UP",             # pyupgrade
+    "S",              # bandit (security)
+    "B",              # bugbear
+    "DJ",             # django-specific
+]
+ignore = ["S101"]  # allow assert in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "djafatt"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "djafatt.settings.dev"
+
+[tool.coverage.run]
+source = ["apps"]
+omit = ["*/migrations/*", "*/tests/*"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true

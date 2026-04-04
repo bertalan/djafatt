@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{% if form.instance.pk %}Modifica{% else %}Nuovo{% endif %} Contatto — djafatt{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'contacts-index' %}" class="btn btn-ghost btn-sm">← Contatti</a>
+</div>
+<h1 class="text-2xl font-bold mb-6">{% if form.instance.pk %}Modifica Contatto{% else %}Nuovo Contatto{% endif %}</h1>
+
+<form method="post" class="max-w-3xl">
+    {% csrf_token %}
+    {% if form.errors %}
+    <div class="alert alert-error mb-4">
+        <ul>{% for field, errors in form.errors.items %}{% for e in errors %}<li><strong>{{ field }}:</strong> {{ e }}</li>{% endfor %}{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="form-control md:col-span-2">
+            <label class="label"><span class="label-text">Nome / Ragione Sociale *</span></label>
+            {{ form.name }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">P.IVA</span></label>
+            {{ form.vat_number }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Codice Fiscale</span></label>
+            {{ form.tax_code }}
+        </div>
+        <div class="form-control md:col-span-2">
+            <label class="label"><span class="label-text">Indirizzo</span></label>
+            {{ form.address }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Città</span></label>
+            {{ form.city }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">CAP</span></label>
+            {{ form.postal_code }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Provincia</span></label>
+            {{ form.province }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Paese</span></label>
+            {{ form.country_code }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Codice SDI</span></label>
+            {{ form.sdi_code }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">PEC</span></label>
+            {{ form.pec }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Email</span></label>
+            {{ form.email }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Telefono</span></label>
+            {{ form.phone }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Cellulare</span></label>
+            {{ form.mobile }}
+        </div>
+        <div class="form-control md:col-span-2">
+            <label class="label"><span class="label-text">Note</span></label>
+            {{ form.notes }}
+        </div>
+        <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+                {{ form.is_customer }}
+                <span class="label-text">Cliente</span>
+            </label>
+        </div>
+        <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+                {{ form.is_supplier }}
+                <span class="label-text">Fornitore</span>
+            </label>
+        </div>
+    </div>
+
+    <h2 class="font-bold text-lg mb-3">Pagamento predefinito</h2>
+    <p class="text-sm opacity-60 mb-4">Questi dati saranno usati come default nelle nuove fatture per questo contatto.</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="form-control">
+            <label class="label"><span class="label-text">Metodo pagamento</span></label>
+            {{ form.default_payment_method }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Condizioni pagamento</span></label>
+            {{ form.default_payment_terms }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Banca</span></label>
+            {{ form.default_bank_name }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">IBAN</span></label>
+            {{ form.default_bank_iban }}
+        </div>
+    </div>
+
+    <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">Salva</button>
+        <a href="{% url 'contacts-index' %}" class="btn btn-ghost">Annulla</a>
+    </div>
+</form>
+{% endblock %}

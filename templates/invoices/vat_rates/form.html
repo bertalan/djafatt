@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{% if form.instance.pk %}Modifica{% else %}Nuova{% endif %} Aliquota IVA — djafatt{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'vat-rates-index' %}" class="btn btn-ghost btn-sm">← Aliquote IVA</a>
+</div>
+<h1 class="text-2xl font-bold mb-6">{% if form.instance.pk %}Modifica Aliquota{% else %}Nuova Aliquota{% endif %}</h1>
+<form method="post" class="max-w-lg">
+    {% csrf_token %}
+    {% if form.errors %}
+    <div class="alert alert-error mb-4">
+        <ul>{% for field, errors in form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <div class="space-y-4 mb-6">
+        <div class="form-control">
+            <label class="label"><span class="label-text">Nome *</span></label>
+            {{ form.name }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Percentuale *</span></label>
+            {{ form.percent }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Descrizione</span></label>
+            {{ form.description }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Natura (per aliquota 0%)</span></label>
+            {{ form.nature }}
+        </div>
+    </div>
+    <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">Salva</button>
+        <a href="{% url 'vat-rates-index' %}" class="btn btn-ghost">Annulla</a>
+    </div>
+</form>
+{% endblock %}

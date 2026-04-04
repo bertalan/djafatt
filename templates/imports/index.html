@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Import XML — djafatt{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Import Fatture XML</h1>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    {# Upload form #}
+    <div class="card bg-base-200 p-6">
+        <h2 class="font-bold text-lg mb-4">Carica file</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% if form.errors %}
+            <div class="alert alert-error mb-4">
+                <ul>{% for field, errors in form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul>
+            </div>
+            {% endif %}
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Categoria *</span></label>
+                    {{ form.category }}
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Sequenza *</span></label>
+                    <div id="id_sequence_wrapper">{{ form.sequence }}</div>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">File XML / P7M / ZIP *</span></label>
+                    {{ form.file }}
+                    <label class="label"><span class="label-text-alt">Max 10 MB per XML, 50 MB per ZIP</span></label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-6">Importa</button>
+        </form>
+    </div>
+
+    {# Results #}
+    {% if stats %}
+    <div class="card bg-base-200 p-6">
+        <h2 class="font-bold text-lg mb-4">Risultati</h2>
+        <div class="stats stats-vertical shadow">
+            <div class="stat">
+                <div class="stat-title">Fatture importate</div>
+                <div class="stat-value text-primary">{{ stats.invoices_imported }}</div>
+            </div>
+            <div class="stat">
+                <div class="stat-title">Contatti creati</div>
+                <div class="stat-value">{{ stats.contacts_created }}</div>
+            </div>
+            {% if stats.errors > 0 %}
+            <div class="stat">
+                <div class="stat-title">Errori</div>
+                <div class="stat-value text-error">{{ stats.errors }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% if stats.error_messages %}
+        <div class="mt-4">
+            <h3 class="font-bold text-sm mb-2">Dettagli errori:</h3>
+            <ul class="list-disc list-inside text-sm opacity-70">
+                {% for msg in stats.error_messages %}
+                <li>{{ msg }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="card bg-base-200 p-6">
+        <h2 class="font-bold text-lg mb-4">Formati supportati</h2>
+        <ul class="list-disc list-inside text-sm space-y-2">
+            <li><strong>.xml</strong> — FatturaPA singola</li>
+            <li><strong>.p7m</strong> — FatturaPA con firma digitale</li>
+            <li><strong>.zip</strong> — Archivio con più fatture XML</li>
+        </ul>
+        <div class="mt-4 text-sm opacity-70">
+            <p>Le fatture importate avranno stato <span class="badge badge-accent badge-sm">ricevuta</span> e non saranno modificabili.</p>
+            <p class="mt-1">I contatti non trovati verranno creati automaticamente dalla P.IVA.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

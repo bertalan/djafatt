@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load djafatt_tags %}
+{% block title %}Elimina {{ object_label }} — djafatt{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <a href="{{ cancel_url }}" class="btn btn-ghost btn-sm">← Annulla</a>
+</div>
+
+<h1 class="text-2xl font-bold mb-4">Elimina {{ object_label }}: {{ object }}</h1>
+
+{% if related_objects %}
+<div class="alert alert-warning mb-6">
+    <span>Impossibile eliminare: <strong>{{ related_objects|length }}</strong> record collegati.</span>
+</div>
+
+<div class="card bg-base-200 p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-lg">{{ related_label }} collegate ({{ related_objects|length }})</h2>
+        <form method="post" action="{{ delete_all_url }}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-error btn-sm"
+                    onclick="return confirm('Eliminare TUTTE le {{ related_objects|length }} {{ related_label|lower }}? Operazione irreversibile.')">
+                Elimina tutte ({{ related_objects|length }})
+            </button>
+        </form>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="table table-zebra table-sm">
+            <thead>
+                <tr>
+                    <th>Numero</th>
+                    <th>Data</th>
+                    <th>Contatto</th>
+                    <th>Totale</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in related_objects %}
+                <tr>
+                    <td>
+                        <a href="{{ inv.edit_url }}" class="link link-primary">{{ inv.number }}</a>
+                    </td>
+                    <td>{{ inv.date|date:"d/m/Y" }}</td>
+                    <td>{{ inv.contact.name }}</td>
+                    <td class="text-right">{{ inv.total_gross|format_cents_eur }}</td>
+                    <td class="text-right">
+                        <form method="post" action="{{ inv.delete_url }}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-ghost btn-xs text-error"
+                                    onclick="return confirm('Eliminare fattura {{ inv.number }}?')">
+                                Elimina
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<p class="text-sm opacity-70 mb-4">Elimina i record collegati per poter procedere con l'eliminazione di "{{ object }}".</p>
+
+{% else %}
+{# No related objects — direct delete #}
+<div class="alert alert-info mb-6">
+    <span>Nessun record collegato. Confermi l'eliminazione?</span>
+</div>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-error">Elimina {{ object_label }}</button>
+    <a href="{{ cancel_url }}" class="btn btn-ghost ml-2">Annulla</a>
+</form>
+{% endif %}
+
+{% endblock %}

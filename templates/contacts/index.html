@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Contatti — djafatt{% endblock %}
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <h1 class="text-2xl font-bold">Contatti</h1>
+    {% if not is_read_only %}
+    <a href="{% url 'contacts-create' %}" class="btn btn-primary btn-sm mt-2 sm:mt-0">+ Nuovo Contatto</a>
+    {% endif %}
+</div>
+
+<!-- Search -->
+<div class="mb-4">
+    <input type="text" name="q" value="{{ request.GET.q }}"
+           class="input input-bordered w-full max-w-md"
+           placeholder="Cerca per nome, P.IVA, CF..."
+           hx-get="{% url 'contacts-index' %}"
+           hx-trigger="input changed delay:300ms"
+           hx-target="#contacts-table"
+           hx-push-url="true"
+           hx-include="this">
+</div>
+
+<div id="contacts-table">
+    {% include "contacts/partials/_table.html" %}
+</div>
+{% endblock %}

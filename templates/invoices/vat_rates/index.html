@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Aliquote IVA — djafatt{% endblock %}
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <h1 class="text-2xl font-bold">Aliquote IVA</h1>
+    <a href="{% url 'vat-rates-create' %}" class="btn btn-primary btn-sm mt-2 sm:mt-0">+ Nuova Aliquota</a>
+</div>
+<div class="overflow-x-auto">
+    <table class="table table-zebra">
+        <thead>
+            <tr><th>Nome</th><th>Aliquota %</th><th>Natura</th><th>Sistema</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for vr in vat_rates %}
+            <tr>
+                <td class="font-medium">{{ vr.name }}</td>
+                <td>{{ vr.percent }}%</td>
+                <td class="text-sm opacity-70">{{ vr.nature|default:"—" }}</td>
+                <td>{% if vr.is_system %}<span class="badge badge-warning badge-sm">sistema</span>{% endif %}</td>
+                <td class="text-right">
+                    {% if not vr.is_system %}
+                    <a href="{% url 'vat-rates-edit' vr.pk %}" class="btn btn-ghost btn-xs">Modifica</a>
+                    <a href="{% url 'vat-rates-delete' vr.pk %}" class="btn btn-ghost btn-xs text-error">Elimina</a>
+                    {% else %}
+                    <span class="text-xs opacity-50">protetta</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center opacity-50">Nessuna aliquota.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

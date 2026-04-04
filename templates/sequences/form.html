@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{% if form.instance.pk %}Modifica{% else %}Nuova{% endif %} Sequenza — djafatt{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'sequences-index' %}" class="btn btn-ghost btn-sm">← Sequenze</a>
+</div>
+<h1 class="text-2xl font-bold mb-6">{% if form.instance.pk %}Modifica Sequenza{% else %}Nuova Sequenza{% endif %}</h1>
+<form method="post" class="max-w-lg">
+    {% csrf_token %}
+    {% if form.errors %}
+    <div class="alert alert-error mb-4">
+        <ul>{% for field, errors in form.errors.items %}{% for e in errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <div class="space-y-4 mb-6">
+        <div class="form-control">
+            <label class="label"><span class="label-text">Nome *</span></label>
+            {{ form.name }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Tipo *</span></label>
+            {{ form.type }}
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Pattern</span></label>
+            {{ form.pattern }}
+            <label class="label"><span class="label-text-alt">{SEQ} = numero, {ANNO} = anno. Es: {SEQ}/{ANNO}</span></label>
+        </div>
+    </div>
+    <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">Salva</button>
+        <a href="{% url 'sequences-index' %}" class="btn btn-ghost">Annulla</a>
+    </div>
+</form>
+{% endblock %}

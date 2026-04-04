@@ -1,0 +1,50 @@
+<div class="due-row grid grid-cols-12 gap-2 items-end border-b border-base-300 pb-3 mb-3" id="due-{{ index }}">
+    <div class="col-span-3">
+        <label class="label label-text text-xs">Scadenza</label>
+        <input name="dues-{{ index }}-due_date" type="date"
+               class="input input-bordered w-full input-sm"
+               value="{% if due_form and due_form.due_date.value %}{{ due_form.due_date.value|date:'Y-m-d' }}{% elif last_due_date %}{{ last_due_date }}{% endif %}" />
+    </div>
+    <div class="col-span-2">
+        <label class="label label-text text-xs">Importo €</label>
+        <input name="dues-{{ index }}-amount_display" type="number"
+               step="0.01" min="0"
+               class="input input-bordered w-full input-sm"
+               value="{% if due_form and due_form.amount_display.value %}{{ due_form.amount_display.value }}{% elif last_amount %}{{ last_amount }}{% endif %}" />
+    </div>
+    <div class="col-span-3">
+        <label class="label label-text text-xs">Metodo pag.</label>
+        <select name="dues-{{ index }}-payment_method" class="select select-bordered w-full select-sm">
+            <option value="">—</option>
+            {% with sel=due_form.payment_method.value|default:last_method %}
+            <option value="MP01" {% if sel == "MP01" %}selected{% endif %}>MP01 — Contanti</option>
+            <option value="MP02" {% if sel == "MP02" %}selected{% endif %}>MP02 — Assegno</option>
+            <option value="MP05" {% if sel == "MP05" %}selected{% endif %}>MP05 — Bonifico</option>
+            <option value="MP08" {% if sel == "MP08" %}selected{% endif %}>MP08 — Carta</option>
+            <option value="MP12" {% if sel == "MP12" %}selected{% endif %}>MP12 — RIBA</option>
+            <option value="MP19" {% if sel == "MP19" %}selected{% endif %}>MP19 — SEPA DD</option>
+            <option value="MP23" {% if sel == "MP23" %}selected{% endif %}>MP23 — PagoPA</option>
+            {% endwith %}
+        </select>
+    </div>
+    <div class="col-span-1 flex items-center pt-5">
+        <label class="cursor-pointer flex items-center gap-1">
+            <input name="dues-{{ index }}-paid" type="checkbox" class="checkbox checkbox-sm"
+                   {% if due_form and due_form.paid.value %}checked{% endif %} />
+            <span class="text-xs">Pagata</span>
+        </label>
+    </div>
+    <div class="col-span-2">
+        <label class="label label-text text-xs">Data pag.</label>
+        <input name="dues-{{ index }}-paid_at" type="date"
+               class="input input-bordered w-full input-sm"
+               {% if due_form and due_form.paid_at.value %}value="{{ due_form.paid_at.value|date:'Y-m-d' }}"{% endif %} />
+    </div>
+    <div class="col-span-1 flex items-center pt-5">
+        <button type="button"
+                hx-delete="{% url 'invoices-remove-due' index %}"
+                hx-target="#due-{{ index }}"
+                hx-swap="outerHTML"
+                class="btn btn-ghost btn-xs text-error">🗑️</button>
+    </div>
+</div>

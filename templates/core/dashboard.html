@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load djafatt_tags %}
+
+{% block title %}Dashboard — djafatt{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Dashboard — {{ fiscal_year }}</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="stat bg-base-100 rounded-box shadow">
+        <div class="stat-title">Fatture Vendita</div>
+        <div class="stat-value text-primary">{{ stats.sales_count|default:"0" }}</div>
+        <div class="stat-desc">€ {{ stats.sales_total|format_cents|default:"0,00" }}</div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+        <div class="stat-title">Fatture Acquisto</div>
+        <div class="stat-value text-secondary">{{ stats.purchase_count|default:"0" }}</div>
+        <div class="stat-desc">€ {{ stats.purchase_total|format_cents|default:"0,00" }}</div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+        <div class="stat-title">Autofatture</div>
+        <div class="stat-value text-accent">{{ stats.self_count|default:"0" }}</div>
+        <div class="stat-desc">€ {{ stats.self_total|format_cents|default:"0,00" }}</div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+        <div class="stat-title">Contatti</div>
+        <div class="stat-value">{{ stats.contacts_count|default:"0" }}</div>
+    </div>
+</div>
+
+<h2 class="text-lg font-bold mb-3">Principio di cassa — {{ fiscal_year }}</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+    <div class="stat bg-success/10 rounded-box shadow border-l-4 border-success">
+        <div class="stat-title">Incassato (vendite)</div>
+        <div class="stat-value text-success">{{ stats.cash_sales_count|default:"0" }}</div>
+        <div class="stat-desc">€ {{ stats.cash_sales_total|format_cents|default:"0,00" }}</div>
+    </div>
+    <div class="stat bg-error/10 rounded-box shadow border-l-4 border-error">
+        <div class="stat-title">Pagato (acquisti)</div>
+        <div class="stat-value text-error">{{ stats.cash_purchase_count|default:"0" }}</div>
+        <div class="stat-desc">€ {{ stats.cash_purchase_total|format_cents|default:"0,00" }}</div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+    <div class="card bg-base-100 shadow border-l-4 border-warning">
+        <div class="card-body p-4">
+            <h2 class="card-title text-warning text-lg">Da incassare (vendite)
+                <span class="badge badge-warning">{{ stats.unpaid_sales_count|default:"0" }}</span>
+            </h2>
+            <p class="text-sm opacity-70 mb-2">Totale: € {{ stats.unpaid_sales_total|format_cents|default:"0,00" }}</p>
+            {% if unpaid_sales %}
+            <div class="overflow-x-auto">
+                <table class="table table-xs table-zebra">
+                    <thead><tr><th>Numero</th><th>Data</th><th>Cliente</th><th class="text-right">Totale</th></tr></thead>
+                    <tbody>
+                    {% for inv in unpaid_sales %}
+                    <tr>
+                        <td class="font-mono"><a href="{% url 'invoices-edit' inv.pk %}" class="link link-hover">{{ inv.number }}</a></td>
+                        <td>{{ inv.date|date:"d/m/Y" }}</td>
+                        <td>{{ inv.contact.name }}</td>
+                        <td class="text-right font-mono">{{ inv.total_gross|format_cents_eur }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm opacity-50">Nessuna fattura da incassare.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card bg-base-100 shadow border-l-4 border-error">
+        <div class="card-body p-4">
+            <h2 class="card-title text-error text-lg">Da pagare (acquisti)
+                <span class="badge badge-error">{{ stats.unpaid_purchase_count|default:"0" }}</span>
+            </h2>
+            <p class="text-sm opacity-70 mb-2">Totale: € {{ stats.unpaid_purchase_total|format_cents|default:"0,00" }}</p>
+            {% if unpaid_purchases %}
+            <div class="overflow-x-auto">
+                <table class="table table-xs table-zebra">
+                    <thead><tr><th>Numero</th><th>Data</th><th>Fornitore</th><th class="text-right">Totale</th></tr></thead>
+                    <tbody>
+                    {% for inv in unpaid_purchases %}
+                    <tr>
+                        <td class="font-mono"><a href="{% url 'purchase-invoices-edit' inv.pk %}" class="link link-hover">{{ inv.number }}</a></td>
+                        <td>{{ inv.date|date:"d/m/Y" }}</td>
+                        <td>{{ inv.contact.name }}</td>
+                        <td class="text-right font-mono">{{ inv.total_gross|format_cents_eur }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm opacity-50">Nessuna fattura da pagare.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

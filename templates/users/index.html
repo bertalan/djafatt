@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Utenti — djafatt{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">Utenti</h1>
+    <a href="{% url 'users-create' %}" class="btn btn-primary btn-sm">+ Nuovo utente</a>
+</div>
+
+<div class="card bg-base-200">
+    <div class="overflow-x-auto">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Nome</th>
+                    <th>Gruppo</th>
+                    <th>Stato</th>
+                    <th>Ultimo accesso</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.first_name }} {{ u.last_name }}</td>
+                    <td>
+                        {% for g in u.groups.all %}
+                        <span class="badge badge-sm">{{ g.name }}</span>
+                        {% empty %}
+                        <span class="badge badge-sm badge-ghost">Nessun gruppo</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="badge badge-sm badge-success">Attivo</span>
+                        {% else %}
+                        <span class="badge badge-sm badge-error">Disattivato</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-sm opacity-70">
+                        {% if u.last_login %}{{ u.last_login|date:"d/m/Y H:i" }}{% else %}Mai{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'users-edit' u.pk %}" class="btn btn-ghost btn-xs">Modifica</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

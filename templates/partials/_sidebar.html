@@ -1,0 +1,104 @@
+<!-- Sidebar navigation -->
+<div class="drawer-side">
+    <label for="sidebar-toggle" class="drawer-overlay"></label>
+    <aside class="bg-base-100 w-64 min-h-full flex flex-col">
+        <!-- Logo -->
+        <div class="p-4 border-b border-base-300">
+            <a href="{% url 'core-dashboard' %}" class="text-xl font-bold">djafatt</a>
+            <p class="text-xs opacity-60">Fatturazione Elettronica</p>
+        </div>
+
+        <!-- Fiscal year selector (Amministratore / Contabile only) -->
+        <div class="p-3 border-b border-base-300">
+            {% if perms.core.manage_fiscal_year %}
+            <form hx-post="{% url 'core-set-fiscal-year' %}" hx-trigger="change" hx-target="body">
+                <select name="year" class="select select-bordered select-sm w-full">
+                    {% for y in available_years %}
+                    <option value="{{ y }}" {% if y == fiscal_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% else %}
+            <span class="text-sm font-medium">Anno {{ fiscal_year }}</span>
+            {% endif %}
+        </div>
+
+        <!-- Menu -->
+        <ul class="menu flex-1 p-4">
+            <li>
+                <a href="{% url 'core-dashboard' %}" class="{% if request.resolver_match.url_name == 'core-dashboard' %}active{% endif %}">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4"/></svg>
+                    Dashboard
+                </a>
+            </li>
+            <li>
+                <details {% if 'invoices' in request.path or 'purchase' in request.path or 'self-invoices' in request.path %}open{% endif %}>
+                    <summary>
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Fatturazione
+                    </summary>
+                    <ul>
+                        <li><a href="{% url 'invoices-index' %}" class="{% if request.resolver_match.url_name == 'invoices-index' %}active{% endif %}">Fatture Vendita</a></li>
+                        <li><a href="{% url 'purchase-invoices-index' %}" class="{% if request.resolver_match.url_name == 'purchase-invoices-index' %}active{% endif %}">Fatture Acquisto</a></li>
+                        <li><a href="{% url 'self-invoices-index' %}" class="{% if request.resolver_match.url_name == 'self-invoices-index' %}active{% endif %}">Autofatture</a></li>
+                    </ul>
+                </details>
+            </li>
+            <li>
+                <a href="{% url 'contacts-index' %}" class="{% if 'contacts' in request.path %}active{% endif %}">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Contatti
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'products-index' %}" class="{% if 'products' in request.path %}active{% endif %}">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    Prodotti
+                </a>
+            </li>
+            <li>
+                <details {% if 'vat-rates' in request.path or 'sequences' in request.path or 'settings' in request.path or 'users' in request.path %}open{% endif %}>
+                    <summary>
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Configurazione
+                    </summary>
+                    <ul>
+                        <li><a href="{% url 'vat-rates-index' %}" class="{% if request.resolver_match.url_name == 'vat-rates-index' %}active{% endif %}">Aliquote IVA</a></li>
+                        <li><a href="{% url 'sequences-index' %}" class="{% if request.resolver_match.url_name == 'sequences-index' %}active{% endif %}">Sequenze</a></li>
+                        {% if perms.core.manage_settings %}
+                        <li><a href="{% url 'settings-index' %}" class="{% if request.resolver_match.url_name == 'settings-index' %}active{% endif %}">Impostazioni</a></li>
+                        {% endif %}
+                        {% if perms.core.manage_users %}
+                        <li><a href="{% url 'users-index' %}" class="{% if request.resolver_match.url_name == 'users-index' %}active{% endif %}">Utenti</a></li>
+                        {% endif %}
+                    </ul>
+                </details>
+            </li>
+            <li>
+                <a href="{% url 'imports-index' %}" class="{% if 'imports' in request.path %}active{% endif %}">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    Import
+                </a>
+            </li>
+            {% if perms.invoices.view_invoice %}
+            <li>
+                <a href="{% url 'reports-index' %}" class="{% if 'reports' in request.path %}active{% endif %}">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Reportistica
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+
+        <!-- Logout -->
+        <div class="p-4 border-t border-base-300">
+            <form method="post" action="{% url 'core-logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-sm w-full justify-start">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    Esci ({{ request.user.username }})
+                </button>
+            </form>
+        </div>
+    </aside>
+</div>

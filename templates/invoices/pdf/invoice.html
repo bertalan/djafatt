@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: A4; margin: 20mm 15mm; }
+    body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 9pt; color: #333; line-height: 1.4; }
+    h1 { font-size: 16pt; margin: 0 0 4mm; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 2mm 3mm; text-align: left; }
+
+    /* Header */
+    .header { display: flex; justify-content: space-between; margin-bottom: 8mm; }
+    .company { max-width: 55%; }
+    .company-name { font-size: 14pt; font-weight: bold; margin-bottom: 2mm; }
+    .invoice-meta { text-align: right; }
+    .invoice-meta .number { font-size: 14pt; font-weight: bold; }
+
+    /* Customer */
+    .customer-box { border: 0.5pt solid #999; padding: 4mm; margin-bottom: 6mm; }
+    .customer-box .label { font-size: 7pt; text-transform: uppercase; color: #888; margin-bottom: 1mm; }
+    .customer-box .name { font-weight: bold; font-size: 10pt; }
+
+    /* Lines table */
+    .lines th { background: #f5f5f5; border-bottom: 1pt solid #333; font-size: 8pt; text-transform: uppercase; }
+    .lines td { border-bottom: 0.5pt solid #ddd; }
+    .lines .right { text-align: right; }
+
+    /* Totals */
+    .totals { margin-top: 6mm; margin-left: auto; width: 55%; }
+    .totals td { padding: 1.5mm 3mm; }
+    .totals .label { text-align: right; padding-right: 6mm; }
+    .totals .grand { font-weight: bold; font-size: 12pt; border-top: 1.5pt solid #333; }
+
+    /* Payment */
+    .payment { margin-top: 6mm; font-size: 8pt; border: 0.5pt solid #ddd; padding: 3mm; }
+    .payment strong { display: inline-block; min-width: 30mm; }
+
+    /* Footer */
+    .footer { margin-top: 10mm; font-size: 7pt; color: #888; text-align: center; border-top: 0.5pt solid #ddd; padding-top: 3mm; }
+</style>
+</head>
+<body>
+
+{% load djafatt_tags %}
+
+{# Header #}
+<div class="header">
+    <div class="company">
+        <div class="company-name">{{ company.name }}</div>
+        <div>{{ company.address }}</div>
+        <div>{{ company.postal_code }} {{ company.city }} ({{ company.province }})</div>
+        <div>P.IVA: {{ company.vat_number }}{% if company.tax_code and company.tax_code != company.vat_number %} — C.F.: {{ company.tax_code }}{% endif %}</div>
+        {% if company.pec %}<div>PEC: {{ company.pec }}</div>{% endif %}
+        {% if company.phone %}<div>Tel: {{ company.phone }}</div>{% endif %}
+        {% if company.email %}<div>Email: {{ company.email }}</div>{% endif %}
+    </div>
+    <div class="invoice-meta">
+        <div class="number">{% if invoice.type == "purchase" %}Fattura Acquisto{% elif invoice.type == "self_invoice" %}Autofattura{% else %}Fattura{% endif %}</div>
+        <div style="font-size: 14pt; font-weight: bold; margin-top: 2mm;">N. {{ invoice.number }}</div>
+        <div style="margin-top: 2mm;">Data: {{ invoice.date|date:"d/m/Y" }}</div>
+        {% if invoice.document_type %}<div>Tipo doc.: {{ invoice.document_type|describe_doc_type }}</div>{% endif %}
+    </div>
+</div>
+
+{# Customer/Supplier #}
+<div class="customer-box">
+    <div class="label">{% if invoice.type == "purchase" or invoice.type == "self_invoice" %}Fornitore{% else %}Cliente{% endif %}</div>
+    <div class="name">{{ invoice.contact.name }}</div>
+    {% if invoice.contact.address %}<div>{{ invoice.contact.address }}</div>{% endif %}
+    {% if invoice.contact.postal_code or invoice.contact.city %}
+    <div>{{ invoice.contact.postal_code }} {{ invoice.contact.city }}{% if invoice.contact.province %} ({{ invoice.contact.province }}){% endif %}</div>
+    {% endif %}
+    {% if invoice.contact.vat_number %}<div>P.IVA: {{ invoice.contact.vat_number }}</div>{% endif %}
+    {% if invoice.contact.tax_code %}<div>C.F.: {{ invoice.contact.tax_code }}</div>{% endif %}
+    {% if invoice.contact.pec %}<div>PEC: {{ invoice.contact.pec }}</div>{% endif %}
+</div>
+
+{# Self-invoice: original invoice reference #}
+{% if invoice.type == "self_invoice" and invoice.related_invoice_number %}
+<div class="payment" style="margin-bottom: 4mm;">
+    <strong>Fat. originale:</strong> N. {{ invoice.related_invoice_number }}{% if invoice.related_invoice_date %} del {{ invoice.related_invoice_date|date:"d/m/Y" }}{% endif %}
+</div>
+{% endif %}
+
+{# Lines #}
+<table class="lines">
+    <thead>
+        <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 40%;">Descrizione</th>
+            <th class="right" style="width: 8%;">Qtà</th>
+            <th style="width: 7%;">UdM</th>
+            <th class="right" style="width: 15%;">Prezzo unit.</th>
+            <th class="right" style="width: 10%;">IVA</th>
+            <th class="right" style="width: 15%;">Totale</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for line in lines %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ line.description }}</td>
+            <td class="right">{{ line.quantity }}</td>
+            <td>{{ line.unit_of_measure }}</td>
+            <td class="right">{{ line.unit_price|format_cents_eur }}</td>
+            <td class="right">{% if line.vat_rate %}{{ line.vat_rate.percent }}%{% else %}—{% endif %}</td>
+            <td class="right">{{ line.total|format_cents_eur }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{# Totals #}
+<table class="totals">
+    <tr>
+        <td class="label">Imponibile</td>
+        <td class="right">{{ invoice.total_net|format_cents_eur }}</td>
+    </tr>
+    <tr>
+        <td class="label">IVA</td>
+        <td class="right">{{ invoice.total_vat|format_cents_eur }}</td>
+    </tr>
+    {% if invoice.withholding_tax_enabled and invoice.withholding_tax_amount %}
+    <tr>
+        <td class="label">Ritenuta d'acconto</td>
+        <td class="right" style="color: #c00;">-{{ invoice.withholding_tax_amount|format_cents_eur }}</td>
+    </tr>
+    {% endif %}
+    {% if invoice.stamp_duty_applied %}
+    <tr>
+        <td class="label">Bollo</td>
+        <td class="right">{{ invoice.stamp_duty_amount|format_cents_eur }}</td>
+    </tr>
+    {% endif %}
+    <tr class="grand">
+        <td class="label">Totale</td>
+        <td class="right">{{ invoice.total_gross|format_cents_eur }}</td>
+    </tr>
+</table>
+
+{# Payment #}
+{% if invoice.payment_method or invoice.bank_name or invoice.bank_iban %}
+<div class="payment">
+    {% if invoice.payment_method %}<div><strong>Metodo:</strong> {{ invoice.payment_method|describe_payment_method }}</div>{% endif %}
+    {% if invoice.payment_terms %}<div><strong>Condizioni:</strong> {{ invoice.payment_terms|describe_payment_terms }}</div>{% endif %}
+    {% if invoice.bank_name %}<div><strong>Banca:</strong> {{ invoice.bank_name }}</div>{% endif %}
+    {% if invoice.bank_iban %}<div><strong>IBAN:</strong> {{ invoice.bank_iban }}</div>{% endif %}
+</div>
+{% endif %}
+
+{# Notes #}
+{% if invoice.notes %}
+<div class="payment" style="margin-top: 4mm;">
+    <strong>Note:</strong> {{ invoice.notes }}
+</div>
+{% endif %}
+
+{# Footer #}
+<div class="footer">
+    {{ company.name }} — P.IVA {{ company.vat_number }}{% if company.pec %} — PEC: {{ company.pec }}{% endif %}
+</div>
+
+</body>
+</html>

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% load djafatt_tags %}
+
+{% block title %}Reportistica — djafatt{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Reportistica</h1>
+
+{# Filters #}
+<div class="card bg-base-200 p-4 mb-6">
+    <form method="get" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+        <div class="form-control">
+            <label class="label"><span class="label-text">Dal</span></label>
+            <input type="date" name="date_from" value="{{ filters.date_from|date:'Y-m-d' }}" class="input input-bordered w-full input-sm">
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Al</span></label>
+            <input type="date" name="date_to" value="{{ filters.date_to|date:'Y-m-d' }}" class="input input-bordered w-full input-sm">
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Tipo</span></label>
+            <select name="type" class="select select-bordered w-full select-sm">
+                {% for val, label in type_choices %}
+                <option value="{{ val }}" {% if val == filters.invoice_type %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Contatto</span></label>
+            <select name="contact" class="select select-bordered w-full select-sm">
+                <option value="">Tutti</option>
+                {% for c in contacts %}
+                <option value="{{ c.pk }}" {% if c.pk|stringformat:"d" == filters.contact_id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-control">
+            <label class="label"><span class="label-text">Pagamento</span></label>
+            <select name="payment_status" class="select select-bordered w-full select-sm">
+                {% for val, label in payment_status_choices %}
+                <option value="{{ val }}" {% if val == filters.payment_status %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-control justify-end">
+            <label class="label cursor-pointer gap-2 justify-start">
+                <input type="checkbox" name="cash_basis" value="1" class="checkbox checkbox-sm checkbox-primary" {% if filters.cash_basis %}checked{% endif %}>
+                <span class="label-text">Principio di cassa</span>
+            </label>
+        </div>
+        <div>
+            <button type="submit" class="btn btn-primary btn-sm w-full">Filtra</button>
+        </div>
+    </form>
+</div>
+
+{# Summary cards #}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="card bg-base-200 p-4 text-center">
+        <div class="text-xs opacity-60 uppercase">Documenti</div>
+        <div class="text-2xl font-bold">{{ summary.count }}</div>
+    </div>
+    <div class="card bg-base-200 p-4 text-center">
+        <div class="text-xs opacity-60 uppercase">Imponibile</div>
+        <div class="text-xl font-mono">{{ summary.total_net|format_cents_eur }}</div>
+    </div>
+    <div class="card bg-base-200 p-4 text-center">
+        <div class="text-xs opacity-60 uppercase">IVA</div>
+        <div class="text-xl font-mono">{{ summary.total_vat|format_cents_eur }}</div>
+    </div>
+    <div class="card bg-base-200 p-4 text-center">
+        <div class="text-xs opacity-60 uppercase">Totale</div>
+        <div class="text-xl font-bold font-mono">{{ summary.total_gross|format_cents_eur }}</div>
+    </div>
+</div>
+
+{% if filters.cash_basis %}
+<h2 class="text-lg font-bold mb-3">Principio di cassa</h2>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="card bg-success/10 border border-success p-4 text-center">
+        <div class="text-xs opacity-60 uppercase">Vendite incassate</div>
+        <div class="text-2xl font-bold">{{ summary.sales_paid.count }}</div>
+        <div class="text-lg font-mono">{{ summary.sales_paid.total|format_cents_eur }}</div>
+    </div>
+    <div class="card bg-warning/10 border border-warning p-4 text-center">
+        <div class="text-xs opacity-60 uppercase">Vendite da incassare</div>
+        <div class="text-2xl font-bold">{{ summary.sales_unpaid.count }}</div>
+        <div class="text-lg font-mono">{{ summary.sales_unpaid.total|format_cents_eur }}</div>
+    </div>
+    <div class="card bg-error/10 border border-error p-4 text-center">
+        <div class="text-xs opacity-60 uppercase">Acquisti pagati</div>
+        <div class="text-2xl font-bold">{{ summary.purchase_paid.count }}</div>
+        <div class="text-lg font-mono">{{ summary.purchase_paid.total|format_cents_eur }}</div>
+    </div>
+    <div class="card bg-info/10 border border-info p-4 text-center">
+        <div class="text-xs opacity-60 uppercase">Acquisti da pagare</div>
+        <div class="text-2xl font-bold">{{ summary.purchase_unpaid.count }}</div>
+        <div class="text-lg font-mono">{{ summary.purchase_unpaid.total|format_cents_eur }}</div>
+    </div>
+</div>
+{% endif %}
+
+{# Export buttons #}
+<div class="flex gap-2 mb-4">
+    <a href="{% url 'reports-csv' %}?date_from={{ filters.date_from|date:'Y-m-d' }}&date_to={{ filters.date_to|date:'Y-m-d' }}&type={{ filters.invoice_type }}&contact={{ filters.contact_id }}&payment_status={{ filters.payment_status }}{% if filters.cash_basis %}&cash_basis=1{% endif %}" class="btn btn-outline btn-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Esporta CSV
+    </a>
+    <a href="{% url 'reports-pdf' %}?date_from={{ filters.date_from|date:'Y-m-d' }}&date_to={{ filters.date_to|date:'Y-m-d' }}&type={{ filters.invoice_type }}&contact={{ filters.contact_id }}&payment_status={{ filters.payment_status }}{% if filters.cash_basis %}&cash_basis=1{% endif %}" class="btn btn-outline btn-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        Esporta PDF
+    </a>
+</div>
+
+{# Results table #}
+<div class="overflow-x-auto">
+    <table class="table table-zebra table-sm" id="report-table">
+        <thead>
+            <tr>
+                <th class="sortable cursor-pointer select-none" data-col="0">Numero <span class="sort-arrow text-xs opacity-40">⇅</span></th>
+                <th class="sortable cursor-pointer select-none" data-col="1">Data <span class="sort-arrow text-xs opacity-40">⇅</span></th>
+                <th>Tipo</th>
+                <th>Tipo Doc.</th>
+                <th class="sortable cursor-pointer select-none" data-col="4">Contatto <span class="sort-arrow text-xs opacity-40">⇅</span></th>
+                <th class="sortable cursor-pointer select-none text-right" data-col="5">Imponibile <span class="sort-arrow text-xs opacity-40">⇅</span></th>
+                <th class="sortable cursor-pointer select-none text-right" data-col="6">IVA <span class="sort-arrow text-xs opacity-40">⇅</span></th>
+                <th class="sortable cursor-pointer select-none text-right" data-col="7">Totale <span class="sort-arrow text-xs opacity-40">⇅</span></th>
+                <th>Met. Pag.</th>
+                <th>Stato</th>
+                <th class="sortable cursor-pointer select-none" data-col="10">Invio SDI <span class="sort-arrow text-xs opacity-40">⇅</span></th>
+                <th>Incasso</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr{% if filters.cash_basis and inv.paid_in_period_only %} class="bg-success/10"{% endif %}>
+                <td class="font-mono">{{ inv.number }}</td>
+                <td data-sort="{{ inv.date|date:'Y-m-d' }}">{{ inv.date|date:"d/m/Y" }}</td>
+                <td><span class="badge badge-sm">{{ inv.type|describe_invoice_type }}</span></td>
+                <td>{{ inv.document_type|describe_doc_type }}</td>
+                <td>{{ inv.contact.name }}</td>
+                <td class="text-right font-mono" data-sort="{{ inv.total_net }}">{{ inv.total_net|format_cents_eur }}</td>
+                <td class="text-right font-mono" data-sort="{{ inv.total_vat }}">{{ inv.total_vat|format_cents_eur }}</td>
+                <td class="text-right font-mono font-bold" data-sort="{{ inv.total_gross }}">{{ inv.total_gross|format_cents_eur }}</td>
+                <td>{{ inv.payment_method|describe_payment_method }}</td>
+                <td><span class="badge badge-sm">{{ inv.status|describe_status }}</span></td>
+                <td data-sort="{{ inv.sdi_sent_at|date:'Y-m-d'|default:'' }}">{{ inv.sdi_sent_at|date:"d/m/Y"|default:"—" }}</td>
+                <td>
+                    {% if inv.payment_status == 'paid' %}<span class="badge badge-sm badge-success">{{ inv.paid_at|date:"d/m/Y" }}</span>
+                    {% elif inv.payment_status == 'partial' %}<span class="badge badge-sm badge-warning">Parziale</span>
+                    {% else %}<span class="badge badge-sm badge-ghost">&mdash;</span>{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="12" class="text-center opacity-50">Nessun risultato con i filtri selezionati.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+(function() {
+    const table = document.getElementById('report-table');
+    if (!table) return;
+    const tbody = table.tBodies[0];
+    const heads = table.querySelectorAll('th.sortable');
+    let currentCol = null;
+    let asc = true;
+
+    heads.forEach(th => {
+        th.addEventListener('click', () => {
+            const col = parseInt(th.dataset.col);
+            if (currentCol === col) {
+                asc = !asc;
+            } else {
+                currentCol = col;
+                asc = false; // first click → desc
+            }
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort((a, b) => {
+                const cellA = a.cells[col];
+                const cellB = b.cells[col];
+                let va = cellA?.dataset.sort ?? cellA?.textContent.trim() ?? '';
+                let vb = cellB?.dataset.sort ?? cellB?.textContent.trim() ?? '';
+                let cmp;
+                if (/^-?\d+(\.\d+)?$/.test(va) && /^-?\d+(\.\d+)?$/.test(vb)) {
+                    cmp = parseFloat(va) - parseFloat(vb);
+                } else {
+                    cmp = va.localeCompare(vb, 'it');
+                }
+                return asc ? cmp : -cmp;
+            });
+            rows.forEach(r => tbody.appendChild(r));
+            heads.forEach(h => {
+                h.querySelector('.sort-arrow').textContent = '⇅';
+                h.querySelector('.sort-arrow').classList.add('opacity-40');
+            });
+            const arrow = th.querySelector('.sort-arrow');
+            arrow.textContent = asc ? '↑' : '↓';
+            arrow.classList.remove('opacity-40');
+        });
+    });
+})();
+</script>
+{% endblock %}
