@@ -20,6 +20,7 @@ staticfiles/
 media/
 .env
 .env.local
+.env.prod
 
 # Vite build output
 static/dist/

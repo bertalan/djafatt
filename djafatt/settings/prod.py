@@ -3,8 +3,9 @@ from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
-# Security headers
-SECURE_SSL_REDIRECT = True
+# Security headers — SSL redirect handled by nginx, not Django
+SECURE_SSL_REDIRECT = False  # nginx does HTTPS redirect
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_HSTS_SECONDS = 31_536_000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True

@@ -2,9 +2,19 @@ from datetime import date
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import connection
 from django.db.models import Count, Sum
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
+
+
+def health_check(request):
+    """Public health check — no auth required."""
+    try:
+        connection.ensure_connection()
+        return JsonResponse({"status": "ok"})
+    except Exception as exc:
+        return JsonResponse({"status": "error", "detail": str(exc)}, status=503)
 
 
 @login_required

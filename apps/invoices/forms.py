@@ -262,6 +262,15 @@ class InvoiceLineForm(forms.ModelForm):
         if self.instance.pk:
             self.fields["unit_price_display"].initial = Decimal(self.instance.unit_price) / 100
 
+    def clean(self):
+        """Skip validation for new empty rows (no description, no product)."""
+        cleaned = super().clean()
+        # Only skip NEW rows (no pk) that are essentially empty
+        if not self.instance.pk and not cleaned.get("description") and not cleaned.get("product"):
+            self._errors.clear()
+            cleaned["DELETE"] = True
+        return cleaned
+
     def save(self, commit=True):
         self.instance.unit_price = round(self.cleaned_data["unit_price_display"] * 100)
         qty = self.cleaned_data["quantity"]

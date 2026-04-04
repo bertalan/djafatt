@@ -1,0 +1,18 @@
+[Unit]
+Description=djafatt celery worker
+After=network.target postgresql.service redis-server.service
+
+[Service]
+User=www
+Group=www
+WorkingDirectory=/www/wwwroot/fatt.betabi.it
+EnvironmentFile=/www/wwwroot/fatt.betabi.it/.env
+ExecStart=/www/wwwroot/fatt.betabi.it/venv/bin/celery -A djafatt worker \
+    -l WARNING \
+    -Q default,sdi \
+    --concurrency=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

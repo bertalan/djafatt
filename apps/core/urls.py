@@ -6,6 +6,7 @@ from .views_settings import SettingsView
 from .views_users import UserCreateView, UserEditView, UserListView
 
 urlpatterns = [
+    path("health/", views.health_check, name="health-check"),
     path("", views.dashboard, name="core-dashboard"),
     path("login/", auth_views.login_view, name="core-login"),
     path("logout/", LogoutView.as_view(), name="core-logout"),
