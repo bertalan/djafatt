@@ -160,7 +160,13 @@ def batch_send_view(request):
         messages.warning(request, "Nessuna fattura in casella di uscita.")
         return redirect("sdi-outbox")
 
-    batch_send_and_sync.delay(user_id=request.user.pk)
+    try:
+        batch_send_and_sync.delay(user_id=request.user.pk)
+    except Exception:
+        logger.exception("Failed to queue batch_send_and_sync task")
+        messages.error(request, "Impossibile avviare l'invio: il servizio di coda non è raggiungibile.")
+        return redirect("sdi-outbox")
+
     messages.success(
         request,
         f"Invio batch avviato: {outbox_count} fattur{'a' if outbox_count == 1 else 'e'} + sincronizzazione arrivi.",
