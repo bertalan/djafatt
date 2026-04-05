@@ -20,6 +20,9 @@ def verify_webhook_signature(request_body: bytes, signature_header: str) -> None
     if not webhook_secret:
         raise SdiWebhookSecurityError("Webhook secret not configured")
 
+    if len(webhook_secret) < 32:
+        raise SdiWebhookSecurityError("Webhook secret too short (min 32 chars)")
+
     if not signature_header:
         raise SdiWebhookSecurityError("Missing signature header")
 

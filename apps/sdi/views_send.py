@@ -3,14 +3,24 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.db import transaction
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect
 
-from apps.invoices.models import Invoice
+from apps.invoices.models import Invoice, SdiStatus
 
+from .models import SdiLog, SdiLogEvent
 from .tasks import send_invoice_to_sdi
 
 logger = logging.getLogger("apps.sdi")
+
+
+def _get_client_ip(request):
+    """Extract client IP, respecting X-Forwarded-For from nginx."""
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
 
 
 @login_required
@@ -22,13 +32,28 @@ def send_to_sdi_view(request, pk):
 
     invoice = get_object_or_404(Invoice.all_types, pk=pk)
 
-    if not invoice.is_sdi_editable():
-        messages.error(request, f"Fattura {invoice.number} già inviata allo SDI.")
-        return redirect("invoices-edit", pk=pk)
+    # Atomic check-and-mark to prevent race conditions
+    with transaction.atomic():
+        invoice = Invoice.all_types.select_for_update().get(pk=pk)
 
-    if not invoice.lines.exists():
-        messages.error(request, "La fattura non ha righe — impossibile inviare.")
-        return redirect("invoices-edit", pk=pk)
+        if not invoice.is_sdi_editable():
+            messages.error(request, f"Fattura {invoice.number} già inviata allo SDI.")
+            return redirect("invoices-edit", pk=pk)
+
+        if not invoice.lines.exists():
+            messages.error(request, "La fattura non ha righe — impossibile inviare.")
+            return redirect("invoices-edit", pk=pk)
+
+        # Mark as pending immediately to prevent duplicate submissions
+        invoice.sdi_status = SdiStatus.PENDING
+        invoice.save(update_fields=["sdi_status", "updated_at"])
+
+        SdiLog.objects.create(
+            invoice=invoice,
+            event=SdiLogEvent.SEND_QUEUED,
+            user=request.user,
+            ip_address=_get_client_ip(request),
+        )
 
     send_invoice_to_sdi.delay(invoice.pk)
     messages.success(request, f"Fattura {invoice.number} in coda per invio SDI.")

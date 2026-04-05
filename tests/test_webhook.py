@@ -31,8 +31,8 @@ def _compute_signature(payload: str, secret: str) -> str:
 class TestWebhookSecurity:
     def test_valid_signature_accepted(self, settings):
         """Webhook with valid HMAC-SHA256 signature is accepted."""
-        settings.OPENAPI_SDI_WEBHOOK_SECRET = "super-secret"
-        sig = _compute_signature(WEBHOOK_PAYLOAD, "super-secret")
+        settings.OPENAPI_SDI_WEBHOOK_SECRET = "supersecretwebhookkey32charslong!!"
+        sig = _compute_signature(WEBHOOK_PAYLOAD, "supersecretwebhookkey32charslong!!")
 
         client = Client()
         response = client.post(
@@ -45,7 +45,7 @@ class TestWebhookSecurity:
 
     def test_invalid_signature_rejected(self, settings):
         """Webhook with wrong signature is rejected 403."""
-        settings.OPENAPI_SDI_WEBHOOK_SECRET = "super-secret"
+        settings.OPENAPI_SDI_WEBHOOK_SECRET = "supersecretwebhookkey32charslong!!"
 
         client = Client()
         response = client.post(
@@ -58,7 +58,7 @@ class TestWebhookSecurity:
 
     def test_missing_signature_rejected(self, settings):
         """Webhook without signature header is rejected 403."""
-        settings.OPENAPI_SDI_WEBHOOK_SECRET = "super-secret"
+        settings.OPENAPI_SDI_WEBHOOK_SECRET = "supersecretwebhookkey32charslong!!"
 
         client = Client()
         response = client.post(
@@ -82,8 +82,8 @@ class TestWebhookSecurity:
         invoice.sdi_status = SdiStatus.SENT
         invoice.save()
 
-        settings.OPENAPI_SDI_WEBHOOK_SECRET = "super-secret"
-        sig = _compute_signature(WEBHOOK_PAYLOAD, "super-secret")
+        settings.OPENAPI_SDI_WEBHOOK_SECRET = "supersecretwebhookkey32charslong!!"
+        sig = _compute_signature(WEBHOOK_PAYLOAD, "supersecretwebhookkey32charslong!!")
 
         client = Client()
         client.post(

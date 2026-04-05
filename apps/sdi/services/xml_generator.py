@@ -7,7 +7,6 @@ import io
 import logging
 
 from constance import config
-from xml.etree import ElementTree as ET
 
 from a38 import builder as a38_builder
 from a38.fattura import (

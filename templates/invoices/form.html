@@ -232,6 +232,13 @@
                 <a href="{% url 'invoices-preview' form.instance.pk %}" target="_blank" class="btn btn-outline w-full mt-2">Anteprima PDF</a>
                 <a href="{% url 'invoices-xml' form.instance.pk %}" class="btn btn-outline w-full mt-2">Scarica XML</a>
                 <button type="submit" formaction="{% url 'invoices-duplicate' form.instance.pk %}" class="btn btn-outline btn-secondary w-full mt-2" formnovalidate>Duplica Fattura</button>
+                {% if form.instance.is_sdi_editable and form.instance.lines.exists %}
+                <div class="divider my-2"></div>
+                <button type="button" class="btn btn-accent w-full"
+                        onclick="document.getElementById('sdi-send-modal').showModal()">
+                    📤 Invia allo SDI
+                </button>
+                {% endif %}
                 {% endif %}
                 <a href="{% url 'invoices-index' %}" class="btn btn-ghost w-full mt-2">Annulla</a>
             </div>
@@ -239,14 +246,43 @@
             {% if form.instance.pk and form.instance.sdi_status %}
             <div class="card bg-base-200 p-4 mt-4 text-sm">
                 <h3 class="font-bold mb-2">Stato SDI</h3>
-                <p>{{ form.instance.get_sdi_status_display }}</p>
-                {% if form.instance.sdi_uuid %}<p class="text-xs opacity-70">UUID: {{ form.instance.sdi_uuid }}</p>{% endif %}
-                {% if form.instance.sdi_message %}<p class="text-xs opacity-70 mt-1">{{ form.instance.sdi_message }}</p>{% endif %}
+                <div class="flex items-center gap-2">
+                    {% if form.instance.sdi_status == 'Delivered' or form.instance.sdi_status == 'AT' or form.instance.sdi_status == 'EC' %}
+                    <span class="badge badge-success badge-sm">{{ form.instance.get_sdi_status_display }}</span>
+                    {% elif form.instance.sdi_status == 'Rejected' or form.instance.sdi_status == 'NE' %}
+                    <span class="badge badge-error badge-sm">{{ form.instance.get_sdi_status_display }}</span>
+                    {% elif form.instance.sdi_status == 'Sent' or form.instance.sdi_status == 'RC' %}
+                    <span class="badge badge-warning badge-sm">{{ form.instance.get_sdi_status_display }}</span>
+                    {% else %}
+                    <span class="badge badge-neutral badge-sm">{{ form.instance.get_sdi_status_display }}</span>
+                    {% endif %}
+                </div>
+                {% if form.instance.sdi_uuid %}<p class="text-xs opacity-70 mt-1">UUID: {{ form.instance.sdi_uuid }}</p>{% endif %}
+                {% if form.instance.sdi_sent_at %}<p class="text-xs opacity-70">Inviata: {{ form.instance.sdi_sent_at|date:"d/m/Y H:i" }}</p>{% endif %}
+                {% if form.instance.sdi_message %}<p class="text-xs text-error mt-1">{{ form.instance.sdi_message }}</p>{% endif %}
             </div>
             {% endif %}
         </div>
     </div>
 </form>
+
+{% if form.instance.pk and form.instance.is_sdi_editable and form.instance.lines.exists %}
+<dialog id="sdi-send-modal" class="modal">
+    <div class="modal-box">
+        <h3 class="text-lg font-bold">Conferma invio allo SDI</h3>
+        <p class="py-4">Stai per inviare la fattura <strong>{{ form.instance.number }}</strong> allo SDI.
+        Dopo l'invio la fattura non sarà più modificabile.</p>
+        <div class="modal-action">
+            <form method="dialog"><button class="btn">Annulla</button></form>
+            <form method="post" action="{% url 'sdi-send' form.instance.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-accent">Conferma invio</button>
+            </form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endif %}
 <script>
 document.body.addEventListener('htmx:configRequest', function(e) {
     var elt = e.detail.elt;

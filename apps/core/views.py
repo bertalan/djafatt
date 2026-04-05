@@ -6,6 +6,7 @@ from django.db import connection
 from django.db.models import Count, Sum
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 
 
 def health_check(request):
@@ -79,6 +80,8 @@ def set_fiscal_year(request):
     if not (request.user.is_superuser or request.user.has_perm("core.manage_fiscal_year")):
         messages.error(request, "Non hai i permessi per cambiare anno fiscale.")
         fallback = request.META.get("HTTP_REFERER", "/")
+        if not url_has_allowed_host_and_scheme(fallback, allowed_hosts={request.get_host()}):
+            fallback = "/"
         if request.headers.get("HX-Request"):
             response = HttpResponse(status=204)
             response["HX-Redirect"] = fallback
@@ -93,6 +96,8 @@ def set_fiscal_year(request):
         return HttpResponseBadRequest("Anno fuori range")
     request.session["fiscal_year"] = year
     redirect_url = request.META.get("HTTP_REFERER", "/")
+    if not url_has_allowed_host_and_scheme(redirect_url, allowed_hosts={request.get_host()}):
+        redirect_url = "/"
     if request.headers.get("HX-Request"):
         response = HttpResponse(status=204)
         response["HX-Redirect"] = redirect_url

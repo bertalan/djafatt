@@ -67,7 +67,7 @@ class TestPermissions:
 
     def test_webhook_endpoint_no_auth_needed(self, settings):
         """Webhook endpoint doesn't require login (uses HMAC instead)."""
-        settings.OPENAPI_SDI_WEBHOOK_SECRET = "secret"
+        settings.OPENAPI_SDI_WEBHOOK_SECRET = "supersecretwebhookkey32charslong!!"
         client = Client()
         response = client.post(
             "/webhooks/sdi/",

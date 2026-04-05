@@ -1,7 +1,18 @@
 """Production settings — hardened."""
+import os
+
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
+
+# ── Mandatory env vars ───────────────────────────────────────────────
+_REQUIRED_ENV = ["SECRET_KEY", "DATABASE_URL"]
+_missing = [k for k in _REQUIRED_ENV if not os.environ.get(k)]
+if _missing:
+    raise ValueError(f"Missing required env vars for production: {', '.join(_missing)}")
+
+if len(SECRET_KEY) < 50:  # noqa: F405
+    raise ValueError("SECRET_KEY must be at least 50 characters in production")
 
 # Security headers — SSL redirect handled by nginx, not Django
 SECURE_SSL_REDIRECT = False  # nginx does HTTPS redirect

@@ -17,7 +17,6 @@ logger = logging.getLogger("apps.sdi")
     bind=True,
     max_retries=3,
     default_retry_delay=60,
-    autoretry_for=(SdiClientError,),
     retry_backoff=True,
 )
 def send_invoice_to_sdi(self, invoice_id: int) -> dict:
@@ -27,6 +26,7 @@ def send_invoice_to_sdi(self, invoice_id: int) -> dict:
     Returns {"uuid": ..., "status": ...} on success.
     """
     from apps.invoices.models import Invoice, SdiStatus
+    from apps.sdi.models import SdiLog, SdiLogEvent
     from apps.sdi.services.openapi_client import OpenApiSdiClient
     from apps.sdi.services.xml_generator import InvoiceXmlGenerator
 
@@ -42,7 +42,23 @@ def send_invoice_to_sdi(self, invoice_id: int) -> dict:
 
     # Send to SDI
     client = OpenApiSdiClient()
-    result = client.send_invoice(xml_content)
+    try:
+        result = client.send_invoice(xml_content)
+    except SdiClientError as exc:
+        SdiLog.objects.create(
+            invoice=invoice,
+            event=SdiLogEvent.SEND_FAILED,
+            error_message=str(exc)[:500],
+        )
+        raise
+    except Exception as exc:
+        logger.exception("Unexpected error sending invoice %s", invoice.number)
+        SdiLog.objects.create(
+            invoice=invoice,
+            event=SdiLogEvent.SEND_FAILED,
+            error_message="Internal error (see logs)",
+        )
+        raise SdiClientError("Failed to send invoice") from exc
 
     # Update invoice
     invoice.sdi_uuid = result.get("uuid", "")
@@ -52,6 +68,13 @@ def send_invoice_to_sdi(self, invoice_id: int) -> dict:
     invoice.save(update_fields=[
         "sdi_uuid", "sdi_status", "status", "sdi_sent_at", "updated_at",
     ])
+
+    SdiLog.objects.create(
+        invoice=invoice,
+        event=SdiLogEvent.SEND_SUCCESS,
+        sdi_uuid=invoice.sdi_uuid,
+        new_status=SdiStatus.SENT,
+    )
 
     logger.info("Invoice %s sent to SDI: uuid=%s", invoice.number, invoice.sdi_uuid)
     return {"uuid": invoice.sdi_uuid, "status": "sent"}

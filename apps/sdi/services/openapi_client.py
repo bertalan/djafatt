@@ -49,8 +49,13 @@ class OpenApiSdiClient:
         data = response.json()
         if not data.get("success"):
             raise SdiClientError(data.get("message", "Unknown SDI error"))
-        logger.info("Invoice sent to SDI: uuid=%s", data["data"].get("uuid", "unknown"))
-        return data["data"]
+        if "data" not in data or not isinstance(data["data"], dict):
+            raise SdiClientError("Invalid API response: missing 'data' field")
+        result = data["data"]
+        if not result.get("uuid"):
+            raise SdiClientError("API response missing uuid")
+        logger.info("Invoice sent to SDI: uuid=%s", result["uuid"])
+        return result
 
     def get_invoice_status(self, uuid: str) -> dict:
         """Check invoice status by UUID."""
