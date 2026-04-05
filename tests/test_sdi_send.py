@@ -192,6 +192,17 @@ class TestBatchSendView:
         assert response.status_code == 302
         mock_task.delay.assert_not_called()
 
+    @patch("apps.sdi.views_send.run_batch_send_and_sync", return_value={"sent": 1, "failed": 0, "synced": 0})
+    @patch("apps.sdi.views_send.batch_send_and_sync")
+    def test_batch_send_falls_back_to_sync(self, mock_task, mock_run, auth_client, _sdi_invoice):
+        """If Celery broker is unreachable, batch runs synchronously."""
+        _sdi_invoice.status = InvoiceStatus.OUTBOX
+        _sdi_invoice.save(update_fields=["status"])
+        mock_task.delay.side_effect = ConnectionError("broker down")
+        response = auth_client.post("/sdi/batch-send/")
+        assert response.status_code == 302
+        mock_run.assert_called_once()
+
 
 # ── Batch task ──
 

@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.invoices.models import Invoice, InvoiceStatus, SdiStatus
 
 from .models import SdiLog, SdiLogEvent
-from .tasks import batch_send_and_sync
+from .tasks import batch_send_and_sync, run_batch_send_and_sync
 
 logger = logging.getLogger("apps.sdi")
 
@@ -160,15 +160,30 @@ def batch_send_view(request):
         messages.warning(request, "Nessuna fattura in casella di uscita.")
         return redirect("sdi-outbox")
 
+    # Try async (Celery) first; fall back to synchronous execution.
     try:
         batch_send_and_sync.delay(user_id=request.user.pk)
+        logger.info("Batch send queued via Celery (%d invoices)", outbox_count)
+        messages.success(
+            request,
+            f"Invio batch avviato: {outbox_count} fattur{'a' if outbox_count == 1 else 'e'} + sincronizzazione arrivi.",
+        )
     except Exception:
-        logger.exception("Failed to queue batch_send_and_sync task")
-        messages.error(request, "Impossibile avviare l'invio: il servizio di coda non è raggiungibile.")
-        return redirect("sdi-outbox")
+        logger.warning("Celery broker unreachable — running batch send synchronously")
+        results = run_batch_send_and_sync()
+        sent, failed = results["sent"], results["failed"]
+        synced = results["synced"]
+        parts = []
+        if sent:
+            parts.append(f"{sent} inviat{'a' if sent == 1 else 'e'}")
+        if failed:
+            parts.append(f"{failed} fallite")
+        if synced:
+            parts.append(f"{synced} ricevute sincronizzate")
+        summary = ", ".join(parts) if parts else "nessuna azione"
+        if failed:
+            messages.warning(request, f"Invio completato (sincrono): {summary}.")
+        else:
+            messages.success(request, f"Invio completato (sincrono): {summary}.")
 
-    messages.success(
-        request,
-        f"Invio batch avviato: {outbox_count} fattur{'a' if outbox_count == 1 else 'e'} + sincronizzazione arrivi.",
-    )
     return redirect("sdi-outbox")

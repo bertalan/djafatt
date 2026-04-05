@@ -1,7 +1,8 @@
 """Celery tasks for SDI operations.
 
-All HTTP calls to the SDI API run asynchronously via Celery,
-never in the Django request thread.
+HTTP calls to the SDI API run via Celery when available.
+If the broker is unreachable, the view falls back to synchronous
+execution via ``run_batch_send_and_sync()``.
 """
 import logging
 
@@ -13,13 +14,11 @@ from apps.common.exceptions import SdiClientError
 logger = logging.getLogger("apps.sdi")
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=120, retry_backoff=True)
-def batch_send_and_sync(self, user_id: int | None = None) -> dict:
-    """Batch send all outbox invoices + sync incoming invoices.
+def run_batch_send_and_sync() -> dict:
+    """Core logic: send all outbox invoices + sync incoming.
 
-    Single task to minimise OpenAPI calls:
-    - 1 send_invoice call per outbox invoice
-    - 1 get_supplier_invoices call to sync inbox
+    Pure function — no Celery dependency.  Called by the Celery
+    task *and* directly as synchronous fallback.
     """
     from apps.invoices.models import Invoice, InvoiceStatus, SdiStatus
     from apps.sdi.models import SdiLog, SdiLogEvent
@@ -90,3 +89,9 @@ def batch_send_and_sync(self, user_id: int | None = None) -> dict:
 
     logger.info("Batch complete: %s", results)
     return results
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=120, retry_backoff=True)
+def batch_send_and_sync(self, user_id: int | None = None) -> dict:
+    """Celery wrapper around run_batch_send_and_sync."""
+    return run_batch_send_and_sync()
