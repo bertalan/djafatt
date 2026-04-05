@@ -503,7 +503,7 @@ def import_supplier_invoices(client) -> int:
     from apps.invoices.models import Invoice
 
     logger = logging.getLogger("apps.sdi")
-    importer = FatturaImporter()
+    importer = InvoiceXmlImportService()
 
     try:
         response = client.get_supplier_invoices(page=1, per_page=50)

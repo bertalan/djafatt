@@ -180,6 +180,8 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Europe/Rome"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_BROKER_POOL_LIMIT = 0  # No connection pool — avoids stale connections in Gunicorn prefork
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # --- SDI ---
 OPENAPI_SDI_TOKEN = os.environ.get("OPENAPI_SDI_TOKEN", "")

@@ -35,6 +35,16 @@ class OpenApiSdiClient:
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.token}"}
 
+    @staticmethod
+    def _check_response(response: httpx.Response) -> None:
+        """Raise SdiClientError on HTTP errors with clear context."""
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise SdiClientError(
+                f"SDI API error {response.status_code}: {response.text[:300]}"
+            ) from exc
+
     def send_invoice(self, xml_content: str) -> dict:
         """Send FatturaPA XML to SDI. Returns {uuid, status}."""
         response = self.client.post(
@@ -45,7 +55,7 @@ class OpenApiSdiClient:
                 "Idempotency-Key": self._build_idempotency_key(xml_content),
             },
         )
-        response.raise_for_status()
+        self._check_response(responsense)
         data = response.json()
         if not data.get("success"):
             raise SdiClientError(data.get("message", "Unknown SDI error"))
@@ -62,7 +72,7 @@ class OpenApiSdiClient:
         response = self.client.get(
             f"{self.base_url}/invoices/{uuid}",
         )
-        response.raise_for_status()
+        self._check_response(responsense)
         return response.json()["data"]
 
     def download_invoice_xml(self, uuid: str) -> str:
@@ -70,7 +80,7 @@ class OpenApiSdiClient:
         response = self.client.get(
             f"{self.base_url}/invoices_download/{uuid}",
         )
-        response.raise_for_status()
+        self._check_response(responsense)
         return response.text
 
     def get_supplier_invoices(self, page: int = 1, per_page: int = 50) -> dict:
@@ -79,7 +89,7 @@ class OpenApiSdiClient:
             f"{self.base_url}/invoices",
             params={"type": 1, "page": page, "per_page": per_page},
         )
-        response.raise_for_status()
+        self._check_response(responsense)
         return response.json()
 
     def register_business(self, vat_number: str, pec: str) -> dict:
@@ -93,7 +103,7 @@ class OpenApiSdiClient:
                 "apply_legal_storage": False,
             },
         )
-        response.raise_for_status()
+        self._check_response(responsense)
         return response.json()
 
     def configure_webhooks(self, webhook_url: str) -> dict:
@@ -102,7 +112,7 @@ class OpenApiSdiClient:
             f"{self.base_url}/api_configurations",
             json={"webhook_url": webhook_url},
         )
-        response.raise_for_status()
+        self._check_response(responsense)
         return response.json()
 
     @staticmethod
