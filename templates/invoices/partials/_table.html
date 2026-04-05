@@ -21,7 +21,7 @@
                 <td>{{ inv.date|date:"d/m/Y" }}</td>
                 <td>{{ inv.contact.name }}</td>
                 <td class="text-right">{{ inv.total_gross|format_cents_eur }}</td>
-                <td><span class="badge badge-sm {% if inv.status == 'draft' %}badge-warning{% elif inv.status == 'generated' %}badge-info{% elif inv.status == 'sent' %}badge-success{% elif inv.status == 'received' %}badge-accent{% endif %}">{{ inv.status|describe_status }}</span></td>
+                <td><span class="badge badge-sm {% if inv.status == 'draft' %}badge-warning{% elif inv.status == 'sealed' %}badge-info{% elif inv.status == 'outbox' %}badge-accent{% elif inv.status == 'sent' %}badge-success{% elif inv.status == 'received' %}badge-accent{% endif %}">{{ inv.status|describe_status }}</span></td>
                 <td>
                     {% if inv.payment_status == 'paid' %}<span class="badge badge-sm badge-success">{{ inv.paid_at|date:"d/m/Y" }}</span>
                     {% elif inv.payment_status == 'partial' %}<span class="badge badge-sm badge-warning">Parziale</span>

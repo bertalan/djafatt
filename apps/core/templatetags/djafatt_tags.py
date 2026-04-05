@@ -67,6 +67,8 @@ _PAYMENT_TERMS_MAP = {
 
 _STATUS_MAP = {
     "draft": "Bozza",
+    "sealed": "Sigillata",
+    "outbox": "In uscita",
     "generated": "Generata",
     "sent": "Inviata",
     "received": "Ricevuta",

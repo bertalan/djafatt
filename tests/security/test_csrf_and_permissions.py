@@ -46,8 +46,9 @@ class TestPermissions:
 
     def test_sdi_locked_invoice_edit_saves_only_payments(self, auth_client, invoice):
         """Locked invoice POST saves only payment dues, not invoice fields."""
-        from apps.invoices.models import SdiStatus
+        from apps.invoices.models import InvoiceStatus, SdiStatus
 
+        invoice.status = InvoiceStatus.SENT
         invoice.sdi_status = SdiStatus.DELIVERED
         invoice.save()
         original_number = invoice.number

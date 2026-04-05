@@ -102,7 +102,7 @@ class SelfInvoiceEditView(LoginRequiredMixin, GroupPermissionMixin, UpdateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["invoice_type_label"] = "Autofattura"
-        ctx["is_locked"] = not self.object.is_sdi_editable()
+        ctx["is_locked"] = not self.object.is_editable()
         inv = self.object
         ctx["total_net"] = inv.total_net
         ctx["total_vat"] = inv.total_vat
@@ -121,7 +121,7 @@ class SelfInvoiceEditView(LoginRequiredMixin, GroupPermissionMixin, UpdateView):
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if not self.object.is_sdi_editable():
+        if not self.object.is_editable():
             dues_formset = PaymentDueFormSet(
                 request.POST, instance=self.object, prefix="dues",
             )
@@ -156,8 +156,8 @@ class SelfInvoiceDeleteView(LoginRequiredMixin, GroupPermissionMixin, DeleteView
     http_method_names = ["post"]
 
     def form_valid(self, form):
-        if not self.object.is_sdi_editable():
-            messages.error(self.request, "Autofattura bloccata da SDI, non eliminabile.")
+        if not self.object.is_editable():
+            messages.error(self.request, "Autofattura bloccata, non eliminabile.")
             return redirect("self-invoices-index")
         messages.success(self.request, "Autofattura eliminata.")
         return super().form_valid(form)

@@ -490,3 +490,50 @@ class InvoiceXmlImportService:
         if child is None:
             child = element.find(f"{{*}}{tag}")
         return child.text if child is not None else None
+
+
+def import_supplier_invoices(client) -> int:
+    """Fetch and import new supplier invoices from SDI.
+
+    Returns count of newly imported invoices.
+    Uses a single API call to get_supplier_invoices.
+    """
+    import logging
+
+    from apps.invoices.models import Invoice
+
+    logger = logging.getLogger("apps.sdi")
+    importer = FatturaImporter()
+
+    try:
+        response = client.get_supplier_invoices(page=1, per_page=50)
+    except Exception:
+        logger.exception("Failed to fetch supplier invoices from SDI")
+        return 0
+
+    data = response.get("data", [])
+    if not isinstance(data, list):
+        logger.warning("Unexpected supplier invoices response format")
+        return 0
+
+    imported = 0
+    for item in data:
+        uuid = item.get("uuid", "")
+        if not uuid:
+            continue
+
+        # Skip already imported
+        if Invoice.all_types.filter(sdi_uuid=uuid).exists():
+            continue
+
+        try:
+            xml_content = client.download_invoice_xml(uuid)
+            result = importer.import_xml(xml_content)
+            # Tag with SDI uuid
+            if result and hasattr(result, "pk"):
+                Invoice.all_types.filter(pk=result.pk).update(sdi_uuid=uuid)
+            imported += 1
+        except Exception:
+            logger.exception("Failed to import supplier invoice uuid=%s", uuid)
+
+    return imported

@@ -118,19 +118,23 @@ class TestSdiSandbox:
         assert "uuid" in status_result or "status" in status_result
 
     def test_full_celery_task_against_sandbox(self, sandbox_invoice):
-        """Run the Celery task synchronously against sandbox.
+        """Run the batch Celery task synchronously against sandbox.
 
         Requires OPENAPI_SDI_TOKEN.
         """
         if not settings.OPENAPI_SDI_TOKEN:
             pytest.skip("OPENAPI_SDI_TOKEN not configured — set it to run sandbox tests")
 
-        from apps.sdi.tasks import send_invoice_to_sdi
+        # Move invoice to outbox state (required by batch task)
+        sandbox_invoice.status = "outbox"
+        sandbox_invoice.sdi_status = "Pending"
+        sandbox_invoice.save(update_fields=["status", "sdi_status"])
 
-        result = send_invoice_to_sdi(sandbox_invoice.pk)
+        from apps.sdi.tasks import batch_send_and_sync
 
-        assert result["uuid"]
-        assert result["status"] == "sent"
+        result = batch_send_and_sync()
+
+        assert result["sent"] == 1
 
         sandbox_invoice.refresh_from_db()
         assert sandbox_invoice.sdi_uuid

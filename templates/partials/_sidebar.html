@@ -41,6 +41,7 @@
                         <li><a href="{% url 'invoices-index' %}" class="{% if request.resolver_match.url_name == 'invoices-index' %}active{% endif %}">Fatture Vendita</a></li>
                         <li><a href="{% url 'purchase-invoices-index' %}" class="{% if request.resolver_match.url_name == 'purchase-invoices-index' %}active{% endif %}">Fatture Acquisto</a></li>
                         <li><a href="{% url 'self-invoices-index' %}" class="{% if request.resolver_match.url_name == 'self-invoices-index' %}active{% endif %}">Autofatture</a></li>
+                        <li><a href="{% url 'sdi-outbox' %}" class="{% if request.resolver_match.url_name == 'sdi-outbox' %}active{% endif %}">📤 Casella di uscita</a></li>
                     </ul>
                 </details>
             </li>

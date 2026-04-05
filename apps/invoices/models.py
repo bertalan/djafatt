@@ -9,6 +9,13 @@ class InvoiceType(models.TextChoices):
     SELF_INVOICE = "self_invoice", "Autofattura"
 
 
+class InvoiceStatus(models.TextChoices):
+    DRAFT = "draft", "Bozza"
+    SEALED = "sealed", "Sigillata"
+    OUTBOX = "outbox", "In uscita"
+    SENT = "sent", "Inviata"
+
+
 class SdiStatus(models.TextChoices):
     PENDING = "Pending", "In attesa"
     SENT = "Sent", "Inviato"
@@ -138,7 +145,7 @@ class Invoice(models.Model):
     sequential_number = models.IntegerField(null=True, blank=True)
     date = models.DateField()
     document_type = models.CharField(max_length=10, blank=True, default="")  # TD01, TD04, TD17, etc.
-    status = models.CharField(max_length=20, default="draft")
+    status = models.CharField(max_length=20, choices=InvoiceStatus.choices, default=InvoiceStatus.DRAFT)
     notes = models.TextField(blank=True, default="")
 
     # --- Relations ---
@@ -175,6 +182,7 @@ class Invoice(models.Model):
     sdi_id = models.CharField(max_length=100, blank=True, default="")
     sdi_message = models.TextField(blank=True, default="")
     sdi_sent_at = models.DateTimeField(null=True, blank=True)
+    sealed_at = models.DateTimeField(null=True, blank=True)
 
     # --- Import idempotency ---
     xml_content_hash = models.CharField(
@@ -229,6 +237,26 @@ class Invoice(models.Model):
     def is_sdi_editable(self) -> bool:
         """True if invoice is not locked by SDI status."""
         return self.sdi_status not in SDI_LOCKED_STATUSES
+
+    def is_editable(self) -> bool:
+        """True if invoice content can be modified (draft only)."""
+        return self.status == InvoiceStatus.DRAFT
+
+    def can_seal(self) -> bool:
+        """True if invoice can be sealed (draft with lines)."""
+        return self.status == InvoiceStatus.DRAFT and self.lines.exists()
+
+    def can_unseal(self) -> bool:
+        """True if sealed invoice can be reverted to draft."""
+        return self.status == InvoiceStatus.SEALED
+
+    def can_queue(self) -> bool:
+        """True if sealed invoice can be moved to outbox."""
+        return self.status == InvoiceStatus.SEALED
+
+    def can_unqueue(self) -> bool:
+        """True if outbox invoice can be moved back to sealed."""
+        return self.status == InvoiceStatus.OUTBOX and self.sdi_status not in SDI_LOCKED_STATUSES
 
     def calculate_totals(self):
         """Recalculate all totals from invoice lines. Delegates to service."""
