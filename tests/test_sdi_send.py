@@ -213,6 +213,7 @@ class TestBatchSendAndSyncTask:
     def test_task_sends_outbox_invoices(self, _sdi_invoice, settings, company_settings):
         settings.OPENAPI_SDI_TOKEN = "test-token"
         settings.OPENAPI_SDI_SANDBOX = True
+        settings.SDI_SEND_METHOD = "openapi"
 
         _sdi_invoice.status = InvoiceStatus.OUTBOX
         _sdi_invoice.sdi_status = SdiStatus.PENDING
@@ -247,6 +248,7 @@ class TestBatchSendAndSyncTask:
         """A single invoice failure does not abort the batch."""
         settings.OPENAPI_SDI_TOKEN = "test-token"
         settings.OPENAPI_SDI_SANDBOX = True
+        settings.SDI_SEND_METHOD = "openapi"
 
         _sdi_invoice.status = InvoiceStatus.OUTBOX
         _sdi_invoice.sdi_status = SdiStatus.PENDING
@@ -274,6 +276,7 @@ class TestBatchSendAndSyncTask:
         """Verify the XML sent contains FatturaElettronica root."""
         settings.OPENAPI_SDI_TOKEN = "test-token"
         settings.OPENAPI_SDI_SANDBOX = True
+        settings.SDI_SEND_METHOD = "openapi"
 
         _sdi_invoice.status = InvoiceStatus.OUTBOX
         _sdi_invoice.sdi_status = SdiStatus.PENDING
@@ -295,3 +298,91 @@ class TestBatchSendAndSyncTask:
 
         sent_body = route.calls[0].request.content.decode("utf-8")
         assert "FatturaElettronica" in sent_body
+
+    @patch("apps.sdi.services.pec_sender.smtplib")
+    def test_task_sends_via_pec(self, mock_smtplib, _sdi_invoice, settings, company_settings):
+        """Batch send dispatches to PEC when SDI_SEND_METHOD=pec."""
+        settings.SDI_SEND_METHOD = "pec"
+        settings.PEC_EMAIL_HOST = "smtps.aruba.it"
+        settings.PEC_EMAIL_HOST_USER = "test@pec.it"
+        settings.PEC_EMAIL_HOST_PASSWORD = "secret"
+        settings.PEC_EMAIL_PORT = 465
+        settings.PEC_EMAIL_USE_SSL = True
+        settings.SDI_PEC_DEST = "sdi01@pec.fatturapa.it"
+        settings.OPENAPI_SDI_TOKEN = "test-token"
+        settings.OPENAPI_SDI_SANDBOX = True
+
+        _sdi_invoice.status = InvoiceStatus.OUTBOX
+        _sdi_invoice.sdi_status = SdiStatus.PENDING
+        _sdi_invoice.save(update_fields=["status", "sdi_status"])
+
+        # Mock SMTP_SSL context manager
+        mock_smtp_instance = mock_smtplib.SMTP_SSL.return_value.__enter__.return_value
+
+        # Mock supplier invoices sync
+        respx.get("https://test.sdi.openapi.it/invoices").mock(
+            return_value=Response(200, json={"success": True, "data": []})
+        )
+
+        from apps.sdi.tasks import run_batch_send_and_sync
+
+        with respx.mock:
+            result = run_batch_send_and_sync()
+
+        assert result["sent"] == 1
+        assert result["failed"] == 0
+        mock_smtp_instance.login.assert_called_once_with("test@pec.it", "secret")
+        mock_smtp_instance.send_message.assert_called_once()
+
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.status == InvoiceStatus.SENT
+        assert _sdi_invoice.sdi_status == SdiStatus.SENT
+
+    @patch("apps.sdi.services.pec_sender.smtplib")
+    def test_pec_skips_pa_invoice(self, mock_smtplib, _sdi_invoice, settings, company_settings):
+        """PA invoices are skipped during PEC send — require digital signature."""
+        settings.SDI_SEND_METHOD = "pec"
+        settings.PEC_EMAIL_HOST = "smtps.aruba.it"
+        settings.PEC_EMAIL_HOST_USER = "test@pec.it"
+        settings.PEC_EMAIL_HOST_PASSWORD = "secret"
+        settings.PEC_EMAIL_PORT = 465
+        settings.PEC_EMAIL_USE_SSL = True
+        settings.SDI_PEC_DEST = "sdi01@pec.fatturapa.it"
+        settings.OPENAPI_SDI_TOKEN = "test-token"
+        settings.OPENAPI_SDI_SANDBOX = True
+
+        # Make the contact a PA (6-char IPA code)
+        _sdi_invoice.contact.sdi_code = "ABCDEF"
+        _sdi_invoice.contact.save(update_fields=["sdi_code"])
+
+        _sdi_invoice.status = InvoiceStatus.OUTBOX
+        _sdi_invoice.sdi_status = SdiStatus.PENDING
+        _sdi_invoice.save(update_fields=["status", "sdi_status"])
+
+        mock_smtp_instance = mock_smtplib.SMTP_SSL.return_value.__enter__.return_value
+
+        respx.get("https://test.sdi.openapi.it/invoices").mock(
+            return_value=Response(200, json={"success": True, "data": []})
+        )
+
+        from apps.sdi.models import SdiLog, SdiLogEvent
+        from apps.sdi.tasks import run_batch_send_and_sync
+
+        with respx.mock:
+            result = run_batch_send_and_sync()
+
+        # Invoice NOT sent — skipped
+        assert result["sent"] == 0
+        assert result["failed"] == 1
+        mock_smtp_instance.send_message.assert_not_called()
+
+        # Still in OUTBOX (not moved to SENT)
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.status == InvoiceStatus.OUTBOX
+
+        # Audit log records the skip
+        log = SdiLog.objects.filter(
+            invoice=_sdi_invoice, event=SdiLogEvent.PA_SKIPPED
+        ).first()
+        assert log is not None
+        assert "firma digitale" in log.error_message

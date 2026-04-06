@@ -39,6 +39,11 @@ class Contact(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def is_pa(self) -> bool:
+        """True if the contact is a Public Administration (codice IPA = 6 chars)."""
+        return bool(self.sdi_code) and len(self.sdi_code) == 6
+
     def is_italian(self) -> bool:
         return self.country_code.upper() == "IT"
 

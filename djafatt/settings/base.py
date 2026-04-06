@@ -187,6 +187,16 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 OPENAPI_SDI_TOKEN = os.environ.get("OPENAPI_SDI_TOKEN", "")
 OPENAPI_SDI_SANDBOX = os.environ.get("OPENAPI_SDI_SANDBOX", "true").lower() == "true"
 OPENAPI_SDI_WEBHOOK_SECRET = os.environ.get("OPENAPI_SDI_WEBHOOK_SECRET", "")
+# Send method: "pec" (free, via PEC) or "openapi" (via OpenAPI REST)
+SDI_SEND_METHOD = os.environ.get("SDI_SEND_METHOD", "pec")
+
+# --- PEC (for SDI send via PEC) ---
+PEC_EMAIL_HOST = os.environ.get("PEC_EMAIL_HOST", "")
+PEC_EMAIL_HOST_USER = os.environ.get("PEC_EMAIL_HOST_USER", "")
+PEC_EMAIL_HOST_PASSWORD = os.environ.get("PEC_EMAIL_HOST_PASSWORD", "")
+PEC_EMAIL_PORT = int(os.environ.get("PEC_EMAIL_PORT", "465"))
+PEC_EMAIL_USE_SSL = os.environ.get("PEC_EMAIL_USE_SSL", "true").lower() == "true"
+SDI_PEC_DEST = os.environ.get("SDI_PEC_DEST", "sdi01@pec.fatturapa.it")
 
 # --- Logging ---
 LOGGING = {
