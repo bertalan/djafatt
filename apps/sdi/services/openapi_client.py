@@ -54,9 +54,11 @@ class OpenApiSdiClient:
 
     def send_invoice(self, xml_content: str) -> dict:
         """Send FatturaPA XML to SDI. Returns {uuid, status}."""
-        logger.info("Sending invoice to SDI (%s/invoices)...", self.base_url)
+        # Use /invoices_signature when apply_signature is enabled in OpenAPI config
+        endpoint = f"{self.base_url}/invoices_signature"
+        logger.info("Sending invoice to SDI (%s)...", endpoint)
         response = self.client.post(
-            f"{self.base_url}/invoices",
+            endpoint,
             content=xml_content.encode("utf-8"),
             headers={
                 "Content-Type": "application/xml",
