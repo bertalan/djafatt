@@ -75,14 +75,24 @@
             <tr>
                 <td class="font-medium font-mono">{{ inv.number }}</td>
                 <td>{{ inv.date|date:"d/m/Y" }}</td>
-                <td>{{ inv.contact.name }}</td>
+                <td>
+                    {{ inv.contact.name }}
+                    {% if inv.contact.is_pa %}<span class="badge badge-warning badge-xs ml-1" title="Pubblica Amministrazione">PA</span>{% endif %}
+                </td>
                 <td><span class="badge badge-sm">{{ inv.type|describe_invoice_type }}</span></td>
                 <td class="text-right">{{ inv.total_gross|format_cents_eur }}</td>
                 <td class="text-right">
-                    <form method="post" action="{% url 'sdi-queue' inv.pk %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-ghost btn-xs text-accent" title="Aggiungi alla casella di uscita">📤 In uscita</button>
-                    </form>
+                    <div class="flex items-center justify-end gap-1 flex-wrap">
+                        <form method="post" action="{% url 'sdi-queue' inv.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-ghost btn-xs text-accent" title="Aggiungi alla casella di uscita">📤 In uscita</button>
+                        </form>
+                        <form method="post" action="{% url 'sdi-upload-signed' inv.pk %}" enctype="multipart/form-data" class="inline flex items-center gap-1">
+                            {% csrf_token %}
+                            <input type="file" name="signed_file" accept=".xml,.p7m" class="file-input file-input-bordered file-input-xs w-36" required>
+                            <button type="submit" class="btn btn-ghost btn-xs text-warning" title="Carica file firmato e invia via PEC">✍️ Firmata</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

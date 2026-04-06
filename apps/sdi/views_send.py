@@ -8,6 +8,7 @@ from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from apps.common.exceptions import SdiClientError
 from apps.invoices.models import Invoice, InvoiceStatus, SdiStatus
 
 from .models import SdiLog, SdiLogEvent
@@ -186,4 +187,76 @@ def batch_send_view(request):
         else:
             messages.success(request, f"Invio completato (sincrono): {summary}.")
 
+    return redirect("sdi-outbox")
+
+
+SIGNED_EXTENSIONS = (".xml", ".xml.p7m")
+MAX_SIGNED_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+@login_required
+@permission_required("invoices.change_invoice", raise_exception=True)
+def upload_signed_view(request, pk):
+    """Upload a digitally signed XML and send it via PEC to SDI."""
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+
+    invoice = get_object_or_404(
+        Invoice.all_types.select_related("contact"),
+        pk=pk,
+        status__in=(InvoiceStatus.SEALED, InvoiceStatus.OUTBOX),
+    )
+
+    uploaded = request.FILES.get("signed_file")
+    if not uploaded:
+        messages.error(request, "Nessun file selezionato.")
+        return redirect("sdi-outbox")
+
+    filename = uploaded.name.lower()
+    if not any(filename.endswith(ext) for ext in SIGNED_EXTENSIONS):
+        messages.error(
+            request,
+            "Formato non valido. Caricare un file .xml (XAdES) o .xml.p7m (CAdES).",
+        )
+        return redirect("sdi-outbox")
+
+    if uploaded.size > MAX_SIGNED_FILE_SIZE:
+        messages.error(request, "File troppo grande (max 5 MB).")
+        return redirect("sdi-outbox")
+
+    file_bytes = uploaded.read()
+
+    from .services.pec_sender import PecSdiSender
+
+    try:
+        sender = PecSdiSender()
+        result = sender.send_signed_file(file_bytes, uploaded.name)
+    except SdiClientError as exc:
+        logger.error("Signed upload PEC send failed for invoice %s: %s", invoice.number, exc)
+        messages.error(request, f"Invio PEC fallito: {exc}")
+        return redirect("sdi-outbox")
+
+    with transaction.atomic():
+        invoice = Invoice.all_types.select_for_update().get(pk=pk)
+        invoice.sdi_uuid = result.get("message_id", "")
+        invoice.sdi_status = SdiStatus.SENT
+        invoice.status = InvoiceStatus.SENT
+        invoice.sdi_sent_at = timezone.now()
+        invoice.save(update_fields=[
+            "sdi_uuid", "sdi_status", "status", "sdi_sent_at", "updated_at",
+        ])
+
+        SdiLog.objects.create(
+            invoice=invoice,
+            event=SdiLogEvent.SEND_SUCCESS,
+            sdi_uuid=invoice.sdi_uuid,
+            new_status=SdiStatus.SENT,
+            user=request.user,
+            ip_address=_get_client_ip(request),
+        )
+
+    messages.success(
+        request,
+        f"Fattura {invoice.number} firmata inviata via PEC ({uploaded.name}).",
+    )
     return redirect("sdi-outbox")

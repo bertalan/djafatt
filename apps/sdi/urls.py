@@ -7,6 +7,7 @@ from .views_send import (
     seal_invoice_view,
     unseal_invoice_view,
     unqueue_invoice_view,
+    upload_signed_view,
 )
 
 urlpatterns = [
@@ -14,6 +15,7 @@ urlpatterns = [
     path("invoices/<int:pk>/unseal/", unseal_invoice_view, name="sdi-unseal"),
     path("invoices/<int:pk>/queue/", queue_invoice_view, name="sdi-queue"),
     path("invoices/<int:pk>/unqueue/", unqueue_invoice_view, name="sdi-unqueue"),
+    path("invoices/<int:pk>/upload-signed/", upload_signed_view, name="sdi-upload-signed"),
     path("outbox/", outbox_view, name="sdi-outbox"),
     path("batch-send/", batch_send_view, name="sdi-batch-send"),
 ]

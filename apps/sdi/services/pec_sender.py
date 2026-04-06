@@ -45,7 +45,23 @@ class PecSdiSender:
             dict with keys: message_id, filename
         """
         msg = self._build_message(xml_content, filename)
+        return self._send_smtp(msg, filename)
 
+    def send_signed_file(self, file_bytes: bytes, filename: str) -> dict:
+        """Send a digitally signed FatturaPA file (.xml.p7m or .xml) via PEC.
+
+        Args:
+            file_bytes: Raw bytes of the signed file.
+            filename: Original filename, e.g. IT02743630069_00001.xml.p7m
+
+        Returns:
+            dict with keys: message_id, filename
+        """
+        msg = self._build_signed_message(file_bytes, filename)
+        return self._send_smtp(msg, filename)
+
+    def _send_smtp(self, msg: EmailMessage, filename: str) -> dict:
+        """Send an EmailMessage via SMTP/SMTPS."""
         try:
             if self.use_ssl:
                 with smtplib.SMTP_SSL(self.host, self.port, timeout=30) as smtp:
@@ -82,6 +98,27 @@ class PecSdiSender:
             xml_content.encode("utf-8"),
             maintype="application",
             subtype="xml",
+            filename=filename,
+        )
+        return msg
+
+    def _build_signed_message(self, file_bytes: bytes, filename: str) -> EmailMessage:
+        """Build the PEC email with a signed file attachment."""
+        msg = EmailMessage()
+        msg["From"] = self.user
+        msg["To"] = self.dest
+        msg["Subject"] = filename
+        msg.set_content(
+            f"Trasmissione fattura elettronica firmata: {filename}"
+        )
+        if filename.endswith(".p7m"):
+            maintype, subtype = "application", "pkcs7-mime"
+        else:
+            maintype, subtype = "application", "xml"
+        msg.add_attachment(
+            file_bytes,
+            maintype=maintype,
+            subtype=subtype,
             filename=filename,
         )
         return msg

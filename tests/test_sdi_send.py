@@ -386,3 +386,118 @@ class TestBatchSendAndSyncTask:
         ).first()
         assert log is not None
         assert "firma digitale" in log.error_message
+
+
+@pytest.mark.django_db
+class TestUploadSignedView:
+    """Tests for uploading a digitally signed XML and sending via PEC."""
+
+    def test_upload_requires_login(self, _sdi_invoice):
+        client = Client()
+        response = client.post(f"/sdi/invoices/{_sdi_invoice.pk}/upload-signed/")
+        assert response.status_code == 302
+        assert "/login/" in response.url
+
+    def test_upload_requires_post(self, auth_client, _sdi_invoice):
+        _sdi_invoice.status = InvoiceStatus.SEALED
+        _sdi_invoice.save(update_fields=["status"])
+        response = auth_client.get(f"/sdi/invoices/{_sdi_invoice.pk}/upload-signed/")
+        assert response.status_code == 400
+
+    def test_upload_rejects_missing_file(self, auth_client, _sdi_invoice):
+        _sdi_invoice.status = InvoiceStatus.SEALED
+        _sdi_invoice.save(update_fields=["status"])
+        response = auth_client.post(f"/sdi/invoices/{_sdi_invoice.pk}/upload-signed/")
+        assert response.status_code == 302
+
+    def test_upload_rejects_invalid_extension(self, auth_client, _sdi_invoice):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        _sdi_invoice.status = InvoiceStatus.SEALED
+        _sdi_invoice.save(update_fields=["status"])
+        bad_file = SimpleUploadedFile("fattura.pdf", b"fake", content_type="application/pdf")
+        response = auth_client.post(
+            f"/sdi/invoices/{_sdi_invoice.pk}/upload-signed/",
+            {"signed_file": bad_file},
+        )
+        assert response.status_code == 302
+
+    @patch("apps.sdi.services.pec_sender.smtplib")
+    def test_upload_sends_p7m_via_pec(self, mock_smtplib, auth_client, _sdi_invoice, settings):
+        settings.PEC_EMAIL_HOST = "smtps.aruba.it"
+        settings.PEC_EMAIL_HOST_USER = "test@pec.it"
+        settings.PEC_EMAIL_HOST_PASSWORD = "secret"
+        settings.PEC_EMAIL_PORT = 465
+        settings.PEC_EMAIL_USE_SSL = True
+        settings.SDI_PEC_DEST = "sdi01@pec.fatturapa.it"
+
+        _sdi_invoice.status = InvoiceStatus.SEALED
+        _sdi_invoice.save(update_fields=["status"])
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        signed = SimpleUploadedFile(
+            "IT02743630069_00001.xml.p7m",
+            b"\x30\x82" + b"\x00" * 100,  # fake PKCS#7 bytes
+            content_type="application/pkcs7-mime",
+        )
+        mock_smtp_instance = mock_smtplib.SMTP_SSL.return_value.__enter__.return_value
+
+        response = auth_client.post(
+            f"/sdi/invoices/{_sdi_invoice.pk}/upload-signed/",
+            {"signed_file": signed},
+        )
+        assert response.status_code == 302
+
+        mock_smtp_instance.login.assert_called_once()
+        mock_smtp_instance.send_message.assert_called_once()
+
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.status == InvoiceStatus.SENT
+        assert _sdi_invoice.sdi_status == SdiStatus.SENT
+        assert _sdi_invoice.sdi_sent_at is not None
+
+    @patch("apps.sdi.services.pec_sender.smtplib")
+    def test_upload_sends_xades_xml_via_pec(self, mock_smtplib, auth_client, _sdi_invoice, settings):
+        settings.PEC_EMAIL_HOST = "smtps.aruba.it"
+        settings.PEC_EMAIL_HOST_USER = "test@pec.it"
+        settings.PEC_EMAIL_HOST_PASSWORD = "secret"
+        settings.PEC_EMAIL_PORT = 465
+        settings.PEC_EMAIL_USE_SSL = True
+        settings.SDI_PEC_DEST = "sdi01@pec.fatturapa.it"
+
+        _sdi_invoice.status = InvoiceStatus.SEALED
+        _sdi_invoice.save(update_fields=["status"])
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        signed = SimpleUploadedFile(
+            "IT02743630069_00001.xml",
+            b"<FatturaElettronica><ds:Signature/></FatturaElettronica>",
+            content_type="application/xml",
+        )
+        mock_smtp_instance = mock_smtplib.SMTP_SSL.return_value.__enter__.return_value
+
+        response = auth_client.post(
+            f"/sdi/invoices/{_sdi_invoice.pk}/upload-signed/",
+            {"signed_file": signed},
+        )
+        assert response.status_code == 302
+
+        mock_smtp_instance.send_message.assert_called_once()
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.status == InvoiceStatus.SENT
+
+    def test_upload_rejects_draft_invoice(self, auth_client, _sdi_invoice):
+        """Only sealed/outbox invoices accept signed upload."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        _sdi_invoice.status = InvoiceStatus.DRAFT
+        _sdi_invoice.save(update_fields=["status"])
+
+        signed = SimpleUploadedFile("test.xml", b"<xml/>", content_type="application/xml")
+        response = auth_client.post(
+            f"/sdi/invoices/{_sdi_invoice.pk}/upload-signed/",
+            {"signed_file": signed},
+        )
+        assert response.status_code == 404
