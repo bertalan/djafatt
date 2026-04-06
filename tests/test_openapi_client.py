@@ -15,7 +15,7 @@ class TestOpenApiSdiClient:
         settings.OPENAPI_SDI_TOKEN = "test-token"
         settings.OPENAPI_SDI_SANDBOX = True
 
-        respx.post("https://test.sdi.openapi.it/invoices_signature").mock(
+        respx.post("https://test.sdi.openapi.it/invoices").mock(
             return_value=Response(200, json={
                 "success": True,
                 "data": {"uuid": "abc-123", "status": "queued"},
@@ -34,7 +34,7 @@ class TestOpenApiSdiClient:
         settings.OPENAPI_SDI_TOKEN = "test-token"
         settings.OPENAPI_SDI_SANDBOX = True
 
-        route = respx.post("https://test.sdi.openapi.it/invoices_signature").mock(
+        route = respx.post("https://test.sdi.openapi.it/invoices").mock(
             return_value=Response(200, json={"success": True, "data": {"uuid": "x"}})
         )
 
@@ -101,7 +101,7 @@ class TestOpenApiSdiClient:
         settings.OPENAPI_SDI_TOKEN = "test-token"
         settings.OPENAPI_SDI_SANDBOX = True
 
-        respx.post("https://test.sdi.openapi.it/invoices_signature").mock(
+        respx.post("https://test.sdi.openapi.it/invoices").mock(
             return_value=Response(200, json={"success": False, "message": "Invalid XML"})
         )
 

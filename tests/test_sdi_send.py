@@ -218,7 +218,7 @@ class TestBatchSendAndSyncTask:
         _sdi_invoice.sdi_status = SdiStatus.PENDING
         _sdi_invoice.save(update_fields=["status", "sdi_status"])
 
-        respx.post("https://test.sdi.openapi.it/invoices_signature").mock(
+        respx.post("https://test.sdi.openapi.it/invoices").mock(
             return_value=Response(200, json={
                 "success": True,
                 "data": {"uuid": "sdi-uuid-001", "status": "queued"},
@@ -252,7 +252,7 @@ class TestBatchSendAndSyncTask:
         _sdi_invoice.sdi_status = SdiStatus.PENDING
         _sdi_invoice.save(update_fields=["status", "sdi_status"])
 
-        respx.post("https://test.sdi.openapi.it/invoices_signature").mock(
+        respx.post("https://test.sdi.openapi.it/invoices").mock(
             return_value=Response(200, json={
                 "success": False,
                 "message": "XML non valido",
@@ -279,7 +279,7 @@ class TestBatchSendAndSyncTask:
         _sdi_invoice.sdi_status = SdiStatus.PENDING
         _sdi_invoice.save(update_fields=["status", "sdi_status"])
 
-        route = respx.post("https://test.sdi.openapi.it/invoices_signature").mock(
+        route = respx.post("https://test.sdi.openapi.it/invoices").mock(
             return_value=Response(200, json={
                 "success": True,
                 "data": {"uuid": "sdi-uuid-002", "status": "queued"},
