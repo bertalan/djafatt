@@ -260,3 +260,39 @@ def upload_signed_view(request, pk):
         f"Fattura {invoice.number} firmata inviata via PEC ({uploaded.name}).",
     )
     return redirect("sdi-outbox")
+
+
+@login_required
+@permission_required("invoices.change_invoice", raise_exception=True)
+def mark_sent_view(request, pk):
+    """Mark an invoice as manually sent (via AdE portal, PEC, etc.)."""
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+
+    with transaction.atomic():
+        invoice = get_object_or_404(
+            Invoice.all_types.select_for_update(),
+            pk=pk,
+            status__in=(InvoiceStatus.SEALED, InvoiceStatus.OUTBOX),
+        )
+
+        invoice.sdi_status = SdiStatus.SENT
+        invoice.status = InvoiceStatus.SENT
+        invoice.sdi_sent_at = timezone.now()
+        invoice.save(update_fields=[
+            "sdi_status", "status", "sdi_sent_at", "updated_at",
+        ])
+
+        SdiLog.objects.create(
+            invoice=invoice,
+            event=SdiLogEvent.MANUAL_SEND,
+            new_status=SdiStatus.SENT,
+            user=request.user,
+            ip_address=_get_client_ip(request),
+        )
+
+    messages.success(
+        request,
+        f"Fattura {invoice.number} segnata come inviata manualmente.",
+    )
+    return redirect("sdi-outbox")

@@ -14,6 +14,7 @@ class SdiLogEvent(models.TextChoices):
     SEND_QUEUED = "send_queued", "Invio accodato"
     SEND_SUCCESS = "send_success", "Invio riuscito"
     SEND_FAILED = "send_failed", "Invio fallito"
+    MANUAL_SEND = "manual_send", "Invio manuale (AdE/PEC)"
     PA_SKIPPED = "pa_skipped", "PA: firma richiesta"
     STATUS_CHANGED = "status_changed", "Stato aggiornato"
     WEBHOOK_RECEIVED = "webhook_received", "Webhook ricevuto"

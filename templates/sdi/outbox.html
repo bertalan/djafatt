@@ -39,10 +39,17 @@
                 <td><span class="badge badge-sm">{{ inv.type|describe_invoice_type }}</span></td>
                 <td class="text-right">{{ inv.total_gross|format_cents_eur }}</td>
                 <td class="text-right">
-                    <form method="post" action="{% url 'sdi-unqueue' inv.pk %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-ghost btn-xs" title="Rimuovi dalla coda">↩️ Rimuovi</button>
-                    </form>
+                    <div class="flex items-center justify-end gap-1">
+                        <form method="post" action="{% url 'sdi-mark-sent' inv.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-ghost btn-xs text-success" title="Segna come inviata manualmente (AdE, PEC, ecc.)"
+                                    onclick="return confirm('Segnare la fattura {{ inv.number }} come inviata manualmente?')">✅ Inviata</button>
+                        </form>
+                        <form method="post" action="{% url 'sdi-unqueue' inv.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-ghost btn-xs" title="Rimuovi dalla coda">↩️ Rimuovi</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -86,6 +93,11 @@
                         <form method="post" action="{% url 'sdi-queue' inv.pk %}" class="inline">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-ghost btn-xs text-accent" title="Aggiungi alla casella di uscita">📤 In uscita</button>
+                        </form>
+                        <form method="post" action="{% url 'sdi-mark-sent' inv.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-ghost btn-xs text-success" title="Segna come inviata manualmente"
+                                    onclick="return confirm('Segnare la fattura {{ inv.number }} come inviata manualmente?')">✅ Inviata</button>
                         </form>
                         <form method="post" action="{% url 'sdi-upload-signed' inv.pk %}" enctype="multipart/form-data" class="inline flex items-center gap-1">
                             {% csrf_token %}

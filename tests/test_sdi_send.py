@@ -501,3 +501,203 @@ class TestUploadSignedView:
             {"signed_file": signed},
         )
         assert response.status_code == 404
+
+
+# ── Mark as sent view ──
+
+
+@pytest.mark.django_db
+class TestMarkSentView:
+    """Tests for marking an invoice as manually sent."""
+
+    def test_mark_sent_requires_login(self, _sdi_invoice):
+        client = Client()
+        response = client.post(f"/sdi/invoices/{_sdi_invoice.pk}/mark-sent/")
+        assert response.status_code == 302
+        assert "/login/" in response.url
+
+    def test_mark_sent_requires_post(self, auth_client, _sdi_invoice):
+        _sdi_invoice.status = InvoiceStatus.SEALED
+        _sdi_invoice.save(update_fields=["status"])
+        response = auth_client.get(f"/sdi/invoices/{_sdi_invoice.pk}/mark-sent/")
+        assert response.status_code == 400
+
+    def test_mark_sent_sealed_invoice(self, auth_client, _sdi_invoice):
+        _sdi_invoice.status = InvoiceStatus.SEALED
+        _sdi_invoice.save(update_fields=["status"])
+        response = auth_client.post(f"/sdi/invoices/{_sdi_invoice.pk}/mark-sent/")
+        assert response.status_code == 302
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.status == InvoiceStatus.SENT
+        assert _sdi_invoice.sdi_status == SdiStatus.SENT
+        assert _sdi_invoice.sdi_sent_at is not None
+
+    def test_mark_sent_outbox_invoice(self, auth_client, _sdi_invoice):
+        _sdi_invoice.status = InvoiceStatus.OUTBOX
+        _sdi_invoice.sdi_status = SdiStatus.PENDING
+        _sdi_invoice.save(update_fields=["status", "sdi_status"])
+        response = auth_client.post(f"/sdi/invoices/{_sdi_invoice.pk}/mark-sent/")
+        assert response.status_code == 302
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.status == InvoiceStatus.SENT
+        assert _sdi_invoice.sdi_status == SdiStatus.SENT
+
+    def test_mark_sent_creates_audit_log(self, auth_client, _sdi_invoice):
+        from apps.sdi.models import SdiLog, SdiLogEvent
+
+        _sdi_invoice.status = InvoiceStatus.SEALED
+        _sdi_invoice.save(update_fields=["status"])
+        auth_client.post(f"/sdi/invoices/{_sdi_invoice.pk}/mark-sent/")
+        log = SdiLog.objects.filter(
+            invoice=_sdi_invoice, event=SdiLogEvent.MANUAL_SEND
+        ).first()
+        assert log is not None
+        assert log.new_status == SdiStatus.SENT
+        assert log.user is not None
+
+    def test_mark_sent_rejects_draft(self, auth_client, _sdi_invoice):
+        response = auth_client.post(f"/sdi/invoices/{_sdi_invoice.pk}/mark-sent/")
+        assert response.status_code == 404
+
+    def test_mark_sent_rejects_already_sent(self, auth_client, _sdi_invoice):
+        _sdi_invoice.status = InvoiceStatus.SENT
+        _sdi_invoice.sdi_status = SdiStatus.SENT
+        _sdi_invoice.save(update_fields=["status", "sdi_status"])
+        response = auth_client.post(f"/sdi/invoices/{_sdi_invoice.pk}/mark-sent/")
+        assert response.status_code == 404
+
+
+# ── OpenAPI status sync ──
+
+
+@pytest.mark.django_db
+class TestSyncSentStatuses:
+    """Tests for _sync_sent_statuses polling OpenAPI for status updates."""
+
+    @respx.mock
+    def test_sync_updates_delivered_status(self, _sdi_invoice, settings):
+        settings.OPENAPI_SDI_TOKEN = "test-token"
+        settings.OPENAPI_SDI_SANDBOX = True
+
+        _sdi_invoice.status = InvoiceStatus.SENT
+        _sdi_invoice.sdi_status = SdiStatus.SENT
+        _sdi_invoice.sdi_uuid = "uuid-123"
+        _sdi_invoice.save(update_fields=["status", "sdi_status", "sdi_uuid"])
+
+        respx.get("https://test.sdi.openapi.it/invoices/uuid-123").mock(
+            return_value=Response(200, json={
+                "success": True,
+                "data": {"uuid": "uuid-123", "status": "delivered"},
+            })
+        )
+        from apps.sdi.services.openapi_client import OpenApiSdiClient
+        from apps.sdi.tasks import _sync_sent_statuses
+
+        client = OpenApiSdiClient()
+        results = {"sent": 0, "failed": 0, "synced": 0}
+        _sync_sent_statuses(client, results)
+
+        assert results["status_updated"] == 1
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.sdi_status == SdiStatus.DELIVERED
+
+    @respx.mock
+    def test_sync_creates_audit_log(self, _sdi_invoice, settings):
+        settings.OPENAPI_SDI_TOKEN = "test-token"
+        settings.OPENAPI_SDI_SANDBOX = True
+
+        _sdi_invoice.status = InvoiceStatus.SENT
+        _sdi_invoice.sdi_status = SdiStatus.SENT
+        _sdi_invoice.sdi_uuid = "uuid-456"
+        _sdi_invoice.save(update_fields=["status", "sdi_status", "sdi_uuid"])
+
+        respx.get("https://test.sdi.openapi.it/invoices/uuid-456").mock(
+            return_value=Response(200, json={
+                "success": True,
+                "data": {"uuid": "uuid-456", "status": "rejected"},
+            })
+        )
+        from apps.sdi.models import SdiLog, SdiLogEvent
+        from apps.sdi.services.openapi_client import OpenApiSdiClient
+        from apps.sdi.tasks import _sync_sent_statuses
+
+        client = OpenApiSdiClient()
+        _sync_sent_statuses(client, {"sent": 0, "failed": 0, "synced": 0})
+
+        log = SdiLog.objects.filter(
+            invoice=_sdi_invoice, event=SdiLogEvent.STATUS_CHANGED
+        ).first()
+        assert log is not None
+        assert log.new_status == SdiStatus.REJECTED
+
+    @respx.mock
+    def test_sync_skips_unknown_status(self, _sdi_invoice, settings):
+        settings.OPENAPI_SDI_TOKEN = "test-token"
+        settings.OPENAPI_SDI_SANDBOX = True
+
+        _sdi_invoice.status = InvoiceStatus.SENT
+        _sdi_invoice.sdi_status = SdiStatus.SENT
+        _sdi_invoice.sdi_uuid = "uuid-789"
+        _sdi_invoice.save(update_fields=["status", "sdi_status", "sdi_uuid"])
+
+        respx.get("https://test.sdi.openapi.it/invoices/uuid-789").mock(
+            return_value=Response(200, json={
+                "success": True,
+                "data": {"uuid": "uuid-789", "status": "unknown_state"},
+            })
+        )
+        from apps.sdi.services.openapi_client import OpenApiSdiClient
+        from apps.sdi.tasks import _sync_sent_statuses
+
+        client = OpenApiSdiClient()
+        results = {"sent": 0, "failed": 0, "synced": 0}
+        _sync_sent_statuses(client, results)
+
+        assert results["status_updated"] == 0
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.sdi_status == SdiStatus.SENT
+
+    @respx.mock
+    def test_sync_ignores_sdi_client_error(self, _sdi_invoice, settings):
+        """Invoices sent via AdE/PEC won't exist on OpenAPI — no crash."""
+        settings.OPENAPI_SDI_TOKEN = "test-token"
+        settings.OPENAPI_SDI_SANDBOX = True
+
+        _sdi_invoice.status = InvoiceStatus.SENT
+        _sdi_invoice.sdi_status = SdiStatus.SENT
+        _sdi_invoice.sdi_uuid = "uuid-notfound"
+        _sdi_invoice.save(update_fields=["status", "sdi_status", "sdi_uuid"])
+
+        respx.get("https://test.sdi.openapi.it/invoices/uuid-notfound").mock(
+            return_value=Response(404, json={"success": False, "message": "Not found"})
+        )
+        from apps.sdi.services.openapi_client import OpenApiSdiClient
+        from apps.sdi.tasks import _sync_sent_statuses
+
+        client = OpenApiSdiClient()
+        results = {"sent": 0, "failed": 0, "synced": 0}
+        _sync_sent_statuses(client, results)
+
+        assert results["status_updated"] == 0
+        _sdi_invoice.refresh_from_db()
+        assert _sdi_invoice.sdi_status == SdiStatus.SENT
+
+    @respx.mock
+    def test_sync_skips_invoices_without_uuid(self, _sdi_invoice, settings):
+        """Manually-sent invoices without sdi_uuid are excluded."""
+        settings.OPENAPI_SDI_TOKEN = "test-token"
+        settings.OPENAPI_SDI_SANDBOX = True
+
+        _sdi_invoice.status = InvoiceStatus.SENT
+        _sdi_invoice.sdi_status = SdiStatus.SENT
+        _sdi_invoice.sdi_uuid = ""
+        _sdi_invoice.save(update_fields=["status", "sdi_status", "sdi_uuid"])
+
+        from apps.sdi.services.openapi_client import OpenApiSdiClient
+        from apps.sdi.tasks import _sync_sent_statuses
+
+        client = OpenApiSdiClient()
+        results = {"sent": 0, "failed": 0, "synced": 0}
+        _sync_sent_statuses(client, results)
+
+        assert results["status_updated"] == 0

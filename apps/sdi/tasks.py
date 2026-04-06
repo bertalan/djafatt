@@ -13,6 +13,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.common.exceptions import SdiClientError
+from apps.invoices.models import SdiStatus
 
 logger = logging.getLogger("apps.sdi")
 
@@ -51,7 +52,7 @@ def run_batch_send_and_sync() -> dict:
     Pure function — no Celery dependency.  Called by the Celery
     task *and* directly as synchronous fallback.
     """
-    from apps.invoices.models import Invoice, InvoiceStatus, SdiStatus
+    from apps.invoices.models import Invoice, InvoiceStatus
     from apps.sdi.models import SdiLog, SdiLogEvent
     from apps.sdi.services.xml_generator import InvoiceXmlGenerator
 
@@ -134,20 +135,88 @@ def run_batch_send_and_sync() -> dict:
             )
             results["failed"] += 1
 
-    # ── Phase 2: sync incoming invoices (always via OpenAPI) ──
+    # ── Phase 2 & 3: OpenAPI status check + incoming sync ──
     try:
         from apps.sdi.services.openapi_client import OpenApiSdiClient
         from apps.sdi.services.xml_importer import import_supplier_invoices
 
         client = OpenApiSdiClient()
+
+        # Phase 2: check status of sent invoices
+        try:
+            _sync_sent_statuses(client, results)
+        except Exception:
+            logger.exception("Batch: failed to sync sent invoice statuses")
+
+        # Phase 3: sync incoming invoices
         synced = import_supplier_invoices(client)
         results["synced"] = synced
         logger.info("Batch: synced %d incoming invoices", synced)
     except Exception:
-        logger.exception("Batch: failed to sync incoming invoices")
+        logger.exception("Batch: failed to init OpenAPI client or sync incoming")
 
     logger.info("Batch complete: %s", results)
     return results
+
+
+# OpenAPI status → SdiStatus mapping
+_OPENAPI_STATUS_MAP = {
+    "delivered": SdiStatus.DELIVERED,
+    "rejected": SdiStatus.REJECTED,
+    "not_sent": SdiStatus.NOT_SENT,
+    "RC": SdiStatus.RECEIVED,
+    "MC": SdiStatus.UNABLE_TO_DELIVER,
+    "DT": SdiStatus.DEADLINE,
+    "NE": SdiStatus.OUTCOME_NEGATIVE,
+    "AT": SdiStatus.ACCEPTED,
+    "EC": SdiStatus.OUTCOME_POSITIVE,
+}
+
+
+def _sync_sent_statuses(client, results: dict) -> None:
+    """Poll OpenAPI for status updates on invoices with an sdi_uuid."""
+    from apps.invoices.models import Invoice
+    from apps.sdi.models import SdiLog, SdiLogEvent
+
+    sent_qs = (
+        Invoice.all_types
+        .filter(sdi_status=SdiStatus.SENT)
+        .exclude(sdi_uuid="")
+        .order_by("sdi_sent_at")[:50]
+    )
+
+    updated = 0
+    for invoice in sent_qs:
+        try:
+            data = client.get_invoice_status(invoice.sdi_uuid)
+            api_status = data.get("status", "")
+            new_sdi_status = _OPENAPI_STATUS_MAP.get(api_status)
+
+            if new_sdi_status and new_sdi_status != invoice.sdi_status:
+                old_status = invoice.sdi_status
+                invoice.sdi_status = new_sdi_status
+                invoice.save(update_fields=["sdi_status", "updated_at"])
+
+                SdiLog.objects.create(
+                    invoice=invoice,
+                    event=SdiLogEvent.STATUS_CHANGED,
+                    sdi_uuid=invoice.sdi_uuid,
+                    new_status=new_sdi_status,
+                )
+                updated += 1
+                logger.info(
+                    "Status update: invoice %s %s → %s",
+                    invoice.number, old_status, new_sdi_status,
+                )
+        except SdiClientError:
+            # Invoice sent via AdE/PEC won't be found on OpenAPI — skip silently
+            logger.debug("Status check skipped for %s (uuid=%s)", invoice.number, invoice.sdi_uuid)
+        except Exception:
+            logger.exception("Status check failed for invoice %s", invoice.number)
+
+    results["status_updated"] = updated
+    if updated:
+        logger.info("Batch: updated status of %d invoices via OpenAPI", updated)
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=120, retry_backoff=True)
