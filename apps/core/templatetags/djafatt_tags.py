@@ -112,6 +112,21 @@ def describe_status(value):
     return _STATUS_MAP.get(str(value), str(value))
 
 
+_PAYMENT_STATUS_MAP = {
+    "paid": "Pagata",
+    "partial": "Parzialmente pagata",
+    "unpaid": "Non pagata",
+}
+
+
+@register.filter
+def describe_payment_status(value):
+    """Payment status → Italian label."""
+    if not value:
+        return ""
+    return _PAYMENT_STATUS_MAP.get(str(value), str(value))
+
+
 @register.filter
 def describe_vat_payability(value):
     return _describe(value, _VAT_PAYABILITY_MAP)

@@ -14,7 +14,10 @@ from .models import Invoice
 @permission_required("invoices.view_invoice", raise_exception=True)
 def invoice_preview_pdf(request, pk):
     """Generate a PDF preview of the invoice."""
-    invoice = get_object_or_404(Invoice.all_types.select_related("contact", "sequence"), pk=pk)
+    invoice = get_object_or_404(
+        Invoice.all_types.select_related("contact", "sequence").prefetch_related("payment_dues"),
+        pk=pk,
+    )
     lines = invoice.lines.select_related("vat_rate").all()
 
     company = {

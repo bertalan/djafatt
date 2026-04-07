@@ -36,6 +36,21 @@
     .payment { margin-top: 6mm; font-size: 8pt; border: 0.5pt solid #ddd; padding: 3mm; }
     .payment strong { display: inline-block; min-width: 30mm; }
 
+    /* Payment dues table */
+    .dues { margin-top: 4mm; }
+    .dues th { background: #f5f5f5; border-bottom: 0.5pt solid #999; font-size: 7.5pt; text-transform: uppercase; }
+    .dues td { border-bottom: 0.5pt solid #eee; font-size: 8pt; }
+    .dues .right { text-align: right; }
+    .dues .overdue { color: #c00; }
+    .dues .paid-tag { color: #060; font-weight: bold; }
+
+    /* Status info */
+    .info-box { margin-top: 4mm; font-size: 8pt; border: 0.5pt solid #ddd; padding: 3mm; background: #fafafa; }
+    .info-box strong { display: inline-block; min-width: 30mm; }
+    .status-paid { color: #060; font-weight: bold; }
+    .status-partial { color: #c80; font-weight: bold; }
+    .status-unpaid { color: #c00; font-weight: bold; }
+
     /* Footer */
     .footer { margin-top: 10mm; font-size: 7pt; color: #888; text-align: center; border-top: 0.5pt solid #ddd; padding-top: 3mm; }
 </style>
@@ -148,6 +163,39 @@
     {% if invoice.bank_iban %}<div><strong>IBAN:</strong> {{ invoice.bank_iban }}</div>{% endif %}
 </div>
 {% endif %}
+
+{# Payment dues / Scadenze #}
+{% with dues=invoice.payment_dues.all %}
+{% if dues %}
+<table class="dues">
+    <thead>
+        <tr>
+            <th style="width: 25%;">Scadenza</th>
+            <th class="right" style="width: 25%;">Importo</th>
+            <th style="width: 25%;">Stato</th>
+            <th style="width: 25%;">Data pagamento</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for due in dues %}
+        <tr>
+            <td{% if due.is_overdue %} class="overdue"{% endif %}>{{ due.due_date|date:"d/m/Y" }}{% if due.is_overdue %} ⚠{% endif %}</td>
+            <td class="right">{{ due.amount|format_cents_eur }}</td>
+            <td>{% if due.paid %}<span class="paid-tag">Pagata</span>{% elif due.is_overdue %}<span class="overdue">Scaduta</span>{% else %}Da pagare{% endif %}</td>
+            <td>{% if due.paid_at %}{{ due.paid_at|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endwith %}
+
+{# Status info: SDI & payment #}
+<div class="info-box">
+    <div><strong>Stato pagamento:</strong> <span class="status-{{ invoice.payment_status }}">{{ invoice.payment_status|describe_payment_status }}</span>{% if invoice.paid_at %} — pagata il {{ invoice.paid_at|date:"d/m/Y" }}{% endif %}</div>
+    {% if invoice.sdi_sent_at %}<div><strong>Invio SDI:</strong> {{ invoice.sdi_sent_at|date:"d/m/Y H:i" }}</div>{% endif %}
+    {% if invoice.sdi_status %}<div><strong>Stato SDI:</strong> {{ invoice.sdi_status }}</div>{% endif %}
+</div>
 
 {# Notes #}
 {% if invoice.notes %}
